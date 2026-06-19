@@ -5,74 +5,24 @@ void main() {
   runApp(const MyApp());
 }
 
-// === БЛОК 1: СВЯЗКА ИЗ ДВУХ КЛАССОВ ДЛЯ MYAPP ===
+// === БЛОК 1: ГЛАВНЫЙ ИСТОЧНИК ДАННЫХ (MYAPP) ===
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
-} // <-- ТУТ МЫ ЗАКРЫЛИ ПЕРВЫЙ КЛАСС!
+}
 
-// Теперь второй класс стоит РЯДОМ, а не внутри
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.light;
+  String _currentLang = 'ru'; // ИСПРАВЛЕНО: Язык теперь живет на самом верху!
 
   void _toggleTheme() {
     setState(() {
       _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     });
   }
-
-  // Метод build переехал СЮДА — внутрь класса состояния
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Dog-Friendly Map',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
-      themeMode: _themeMode, // <-- ИСПРАВЛЕНО: заменили ";" на запятую
-
-      // ИСПРАВЛЕНО: убрали "const", так как данные динамические
-      home: MainMapScreen(
-        currentThemeMode: _themeMode,
-        onThemeToggle: _toggleTheme,
-      ),
-    );
-  }
-}
-
-
-// === БЛОК 2: СВЯЗКА ДЛЯ ЭКРАНА КАРТЫ (ПРИНИМАЕТ НАСТРОЙКИ) ===
-
-class MainMapScreen extends StatefulWidget {
-  // ИСПРАВЛЕНО: Научили класс принимать переменные сверху (наши "пропсы")
-  final ThemeMode currentThemeMode;
-  final VoidCallback onThemeToggle;
-
-  const MainMapScreen({
-    super.key,
-    required this.currentThemeMode,
-    required this.onThemeToggle,
-  });
-
-  @override
-  State<MainMapScreen> createState() => _MainMapScreenState();
-}
-
-class _MainMapScreenState extends State<MainMapScreen> {
-  
-  String _currentLang = 'ru';
-
-  final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
-String _selectedCategory = 'cafe'; // И тут тоже системное слово! 
 
   void _toggleLanguage() {
     setState(() {
@@ -88,42 +38,84 @@ String _selectedCategory = 'cafe'; // И тут тоже системное сл
 
   @override
   Widget build(BuildContext context) {
-    // Создаем удобную булеву переменную для проверки темы
+    return MaterialApp(
+      title: 'Dog-Friendly Map',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green, brightness: Brightness.dark),
+        useMaterial3: true,
+      ),
+      themeMode: _themeMode,
+      // Передаем вниз НА ГЛАВНЫЙ ЭКРАН вообще всё: и тему, и язык, и обе функции
+      home: MainMapScreen(
+        currentThemeMode: _themeMode,
+        currentLang: _currentLang,
+        onThemeToggle: _toggleTheme,
+        onLanguageToggle: _toggleLanguage,
+      ),
+    );
+  }
+}
+
+
+// === БЛОК 2: ГЛАВНЫЙ ЭКРАН (ЧИСТАЯ КАРТА И ПОИСК) ===
+
+class MainMapScreen extends StatefulWidget {
+  final ThemeMode currentThemeMode;
+  final String currentLang;
+  final VoidCallback onThemeToggle;
+  final VoidCallback onLanguageToggle;
+
+  const MainMapScreen({
+    super.key,
+    required this.currentThemeMode,
+    required this.currentLang,
+    required this.onThemeToggle,
+    required this.onLanguageToggle,
+  });
+
+  @override
+  State<MainMapScreen> createState() => _MainMapScreenState();
+}
+
+class _MainMapScreenState extends State<MainMapScreen> {
+  final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
+  String _selectedCategory = 'cafe';
+
+  @override
+  Widget build(BuildContext context) {
     final isDark = widget.currentThemeMode == ThemeMode.dark;
+    final lang = widget.currentLang;
 
     return Scaffold(
       body: Stack(
         children: [
 
-          // СЛОЙ 1: Заглушка под будущую карту (теперь меняет цвет!)
+          // СЛОЙ 1: Заглушка под будущую карту
           Container(
             width: double.infinity,
             height: double.infinity,
-            // Если тема темная — красим в темно-серый, если светлая — в светло-серый
             color: isDark ? Colors.grey[900] : Colors.grey[200],
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.map,
-                    size: 64,
-                    color: isDark ? Colors.grey[600] : Colors.grey,
-                  ),
+                  Icon(Icons.map, size: 64, color: isDark ? Colors.grey[600] : Colors.grey),
                   const SizedBox(height: 10),
-                  // Text(
-                  //   'нюхай хуй',
-                  //   style: TextStyle(
-                  //     color: isDark ? Colors.grey[400] : Colors.grey,
-                  //     fontSize: 18,
-                  //   ),
-                  // ),
+                  Text(
+                    AppTranslations.data[lang]!['map_placeholder']!,
+                    style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey, fontSize: 18),
+                  ),
                 ],
               ),
             ),
           ),
 
-          // СЛОЙ 2: Верхняя панель управления (Поиск и Фильтры)
+          // СЛОЙ 2: Верхняя панель управления
           Positioned(
             top: 60,
             left: 16,
@@ -133,18 +125,32 @@ String _selectedCategory = 'cafe'; // И тут тоже системное сл
                 // Строка поиска
                 Card(
                   elevation: 4,
-                  // Меняем цвет карточки поиска под тему
                   color: isDark ? Colors.grey[850] : Colors.white,
                   child: TextField(
                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
                     decoration: InputDecoration(
-                      hintText: AppTranslations.data[_currentLang]!['search_hint']!,
+                      hintText: AppTranslations.data[lang]!['search_hint']!,
                       hintStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey),
                       prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[400] : Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
+                      suffixIcon: IconButton(
+                        icon: Icon(Icons.settings, color: isDark ? Colors.grey[400] : Colors.grey),
+                        onPressed: () {
+                          // НАВИГАЦИЯ: Открываем экран настроек и передаем пропсы дальше
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SettingsScreen(
+                                currentThemeMode: widget.currentThemeMode,
+                                currentLang: widget.currentLang,
+                                onThemeToggle: widget.onThemeToggle,
+                                onLanguageToggle: widget.onLanguageToggle,
+                              ),
+                            ),
+                          );
+                        },
                       ),
+
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                       filled: true,
                       fillColor: Colors.transparent,
                     ),
@@ -165,7 +171,7 @@ String _selectedCategory = 'cafe'; // И тут тоже системное сл
                       return Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: ChoiceChip(
-                          label: Text(AppTranslations.data[_currentLang]![category]!),
+                          label: Text(AppTranslations.data[lang]![category]!),
                           selected: isSelected,
                           onSelected: (bool selected) {
                             setState(() {
@@ -181,43 +187,68 @@ String _selectedCategory = 'cafe'; // И тут тоже системное сл
             ),
           ),
 
-          // СЛОЙ 3: Кнопка-переключатель темы
-          Positioned(
-            bottom: 40,
-            right: 16,
-            child: FloatingActionButton(
-              backgroundColor: isDark ? Colors.green[700] : Colors.green,
-              onPressed: () {
-                widget.onThemeToggle();
+        ],
+      ),
+    );
+  }
+}
+
+
+// === БЛОК 3: НОВЫЙ ЭКРАН НАСТРОЕК (ПОЯВЛЯЕТСЯ ПРИ КЛИКЕ НА ШЕСТЕРЕНКУ) ===
+
+class SettingsScreen extends StatelessWidget {
+  final ThemeMode currentThemeMode;
+  final String currentLang;
+  final VoidCallback onThemeToggle;
+  final VoidCallback onLanguageToggle;
+
+  const SettingsScreen({
+    super.key,
+    required this.currentThemeMode,
+    required this.currentLang,
+    required this.onThemeToggle,
+    required this.onLanguageToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = currentThemeMode == ThemeMode.dark;
+
+    return Scaffold(
+      // Верхняя панель экрана с кнопкой "Назад" (Flutter рисует стрелочку сам!)
+      appBar: AppBar(
+        title: Text(currentLang == 'en' ? 'Settings' : currentLang == 'ua' ? 'Налаштування' : 'Настройки'),
+        backgroundColor: isDark ? Colors.grey[850] : Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+
+          // ПУНКТ 1: Смена Темы
+          ListTile(
+            leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: Colors.green),
+            title: Text(currentLang == 'en' ? 'Dark Mode' : currentLang == 'ua' ? 'Темна тема' : 'Темная тема'),
+            trailing: Switch(
+              value: isDark,
+              onChanged: (bool value) {
+                onThemeToggle();
               },
-              child: Icon(
-                isDark ? Icons.light_mode : Icons.dark_mode,
-                color: Colors.white,
-              ),
             ),
           ),
 
-          // СЛОЙ 4: Кнопка переключения языка
-          Positioned(
-            bottom: 40,
-            left: 16, // Ставим слева, чтобы не налезла на кнопку темы
-            child: FloatingActionButton(
-              // Важно: если на экране две таких кнопки, им нужны разные теги, иначе Flutter ругнется
-              heroTag: 'lang_btn', 
-              backgroundColor: isDark ? Colors.grey[800] : Colors.white,
-              onPressed: _toggleLanguage, // Вызываем нашу функцию из Шага 1
-              child: Text(
-                // Выводим текущий язык большими буквами (RU, EN, UA)
-                _currentLang.toUpperCase(), 
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+          const Divider(),
+
+          // ПУНКТ 2: Смена Языка
+          ListTile(
+            leading: const Icon(Icons.language, color: Colors.green),
+            title: Text(currentLang == 'en' ? 'Language' : currentLang == 'ua' ? 'Мова' : 'Язык'),
+            // Кнопка, отображающая текущий язык
+            trailing: ElevatedButton(
+              onPressed: onLanguageToggle,
+              child: Text(currentLang.toUpperCase()),
             ),
           ),
-          // --------------------------------
 
         ],
       ),
