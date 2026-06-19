@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() {
   runApp(const MyApp());
@@ -96,23 +98,36 @@ class _MainMapScreenState extends State<MainMapScreen> {
         children: [
 
           // СЛОЙ 1: Заглушка под будущую карту
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: isDark ? Colors.grey[900] : Colors.grey[200],
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 64, color: isDark ? Colors.grey[600] : Colors.grey),
-                  const SizedBox(height: 10),
-                  Text(
-                    AppTranslations.data[lang]!['map_placeholder']!,
-                    style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey, fontSize: 18),
+          // Реальная интерактивная карта
+          FlutterMap(
+            options: const MapOptions(
+              // Начальные координаты центра карты (это Киев, можешь вбить свой город)
+              initialCenter: LatLng(50.4501, 30.5234),
+              initialZoom: 13.0,
+            ),
+            children: [
+              // Слой, который скачивает картинки карты из интернета
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.dog_friendly_map',
+              ),
+              
+              // Слой, где будут лежать наши маркеры-лапки café
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: const LatLng(50.4501, 30.5234), // Координаты маркера
+                    width: 50,
+                    height: 50,
+                    child: const Icon(
+                      Icons.pets, // Иконка лапки
+                      color: Colors.green,
+                      size: 40,
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
 
           // СЛОЙ 2: Верхняя панель управления
