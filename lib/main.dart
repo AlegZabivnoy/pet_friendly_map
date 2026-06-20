@@ -120,6 +120,8 @@ class _MainMapScreenState extends State<MainMapScreen> {
   String _selectedCategory = 'cafe';
 
   DogFriendlyPlace? _selectedPlace; 
+  // Следилка за высотой вытягивания карточки (начинаем с 30%)
+  double _sheetExtent = 0.3;
 
   // 2. ФУНКЦИЯ ДЛЯ ИКОНОК: Выдает нужную картинку по названию категории
   // НОВАЯ ФУНКЦИЯ ДЛЯ КАСТОМНОГО ПИНА С ЛАПКОЙ
@@ -180,82 +182,46 @@ class _MainMapScreenState extends State<MainMapScreen> {
 
           // СЛОЙ 1: Реальная интерактивная карта OpenStreetMap
           FlutterMap(
-            options: const MapOptions(
-              // ⬇️ ИСПРАВЛЕНО: Теперь карта при запуске открывает Киев
-              initialCenter: LatLng(50.4501, 30.5234), 
+            options: MapOptions(
+              initialCenter: const LatLng(50.4501, 30.5234), 
               initialZoom: 13.0,
+              
+              // 2. onTap теперь находится строго ВНУТРИ скобок MapOptions!
+              onTap: (tapPosition, point) {
+                if (_selectedPlace != null) {
+                  setState(() {
+                    _selectedPlace = null;
+                    _sheetExtent = 0.3;
+                  });
+                }
+              },
             ),
+            
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
-              
-              // Слой с маркерами (теперь динамический!)
-              // Слой с маркерами
+            
               // Слой с маркерами
               MarkerLayer(
                 markers: mockPlacesList
                     .where((place) => place.category == _selectedCategory)
                     .map((place) => Marker(
                           point: place.coordinates,
-                          
-                          // 1. ВОЗВРАЩАЕМ СТРОГИЕ РАЗМЕРЫ БУЛАВКИ
                           width: 60,  
                           height: 60, 
                           rotate: true,
+                          alignment: Alignment.bottomCenter, 
                           
-                          // 2. НАСТРАИВАЕМ ЯКОРЬ (АНКОР)
-                          // Во flutter_map логика якоря часто инвертирована. 
-                          // Попробуй Alignment.topCenter. Если булавка все равно уплывает в другую сторону, 
-                          // поменяй на Alignment.bottomCenter.
-                          // Для идеальной подгонки до миллиметра можно использовать числа: const Alignment(0, -0.8)
-                          alignment: Alignment.topCenter, 
-                          
-                          // 3. Используем Stack с выходом за края
-                          child: Stack(
-                            clipBehavior: Clip.none, // ⬅️ МАГИЯ: разрешаем тексту вылезать за пределы 60х60!
-                            alignment: Alignment.center,
-                            children: [
-                              
-                              // ВСПЛЫВАЮЩИЙ КВАДРАТИК (Сдвигаем его вверх)
-                              if (_selectedPlace == place)
-                                Positioned(
-                                  bottom: 55, // Высота подъема над булавкой
-                                  child: Container(
-                                    width: 140, // Жестко даем ширину, чтоб длинные тексты влезали
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.grey[800] : Colors.white,
-                                      borderRadius: BorderRadius.circular(8),
-                                      boxShadow: const [
-                                        BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-                                      ],
-                                    ),
-                                    child: Text(
-                                      place.name,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? Colors.white : Colors.black,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2, 
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                              
-                              // САМА БУЛАВКА
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedPlace = _selectedPlace == place ? null : place;
-                                  });
-                                },
-                                child: _buildCustomPin(place.category),
-                              ),
-                            ],
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedPlace = place; // Запоминаем, что открыли
+                                _sheetExtent = 0.3;     // Выезжает на 30%
+                              });
+                            },
+                            child: _buildCustomPin(place.category),
                           ),
                         ))
                     .toList(),
@@ -263,6 +229,173 @@ class _MainMapScreenState extends State<MainMapScreen> {
             ],
           ),
 
+          // 1. УМНОЕ ДИНАМИЧЕСКОЕ ЗАТЕМНЕНИЕ
+          if (_selectedPlace != null)
+            IgnorePointer(
+              // МАГИЯ 1: Пока карточка маленькая (<= 30%), сквозь затемнение можно 
+              // свободно скроллить и двигать карту!
+              ignoring: _sheetExtent <= 0.3, 
+              child: GestureDetector(
+                onTap: () {
+                  // Если карточка большая и мы кликнули по темному фону - скрываем её
+                  setState(() {
+                    _selectedPlace = null;
+                    _sheetExtent = 0.3;
+                  });
+                },
+                child: Container(
+                  // МАГИЯ 2: Чем выше тянем, тем темнее фон. Математика плавно переводит 
+                  // высоту от 0.3 до 0.8 в прозрачность от 0.0 (невидимо) до 0.6 (темно).
+                  color: Colors.black.withOpacity(
+                    ((_sheetExtent - 0.3) * 1.2).clamp(0.0, 0.6),
+                  ),
+                ),
+              ),
+            ),
+
+          // 2. ВЫЕЗЖАЮЩАЯ КАРТОЧКА (Теперь встроена в экран)
+          if (_selectedPlace != null)
+            NotificationListener<DraggableScrollableNotification>(
+              onNotification: (notification) {
+                // Если тянем карточку ниже 0.2 (20% экрана), считаем, что мы её "смахнули" вниз
+                if (notification.extent < 0.2) {
+                  setState(() {
+                    _selectedPlace = null;
+                    _sheetExtent = 0.3;
+                  });
+                } else {
+                  setState(() {
+                    _sheetExtent = notification.extent;
+                  });
+                }
+                return true;
+              },
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.3,
+                minChildSize: 0.1, // Разрешаем тянуть вниз для закрытия
+                maxChildSize: 0.8,
+                snap: true, // <--- МАГИЯ ПРИЛИПАНИЯ
+                snapSizes: const [0.3, 0.8], // <--- ТОЧКИ, ГДЕ ОНА ОСТАНАВЛИВАЕТСЯ
+                builder: (context, scrollController) {
+                  final isDark = Theme.of(context).brightness == Brightness.dark;
+                  final backgroundColor = isDark ? Colors.grey[900]! : Colors.white;
+
+                  // ВЫНОСИМ ПЕРЕМЕННУЮ СЮДА: она будет сохраняться при перетаскивании
+                  bool isLiked = false; 
+
+                  return StatefulBuilder(
+                    builder: (context, setLocalState) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: backgroundColor,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10)],
+                        ),
+                        child: Stack(
+                          children: [
+                            ListView(
+                              controller: scrollController,
+                              padding: const EdgeInsets.all(16),
+                              children: [
+                                Center(
+                                  child: Container(
+                                    width: 40, height: 5,
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                ),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _selectedPlace!.name,
+                                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    Row(
+                                      children: List.generate(5, (index) {
+                                        return Icon(
+                                          index < 4 ? Icons.star : Icons.star_border,
+                                          size: 20,
+                                          color: Colors.orange,
+                                        );
+                                      }),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        isLiked ? Icons.favorite : Icons.favorite_border,
+                                        color: Colors.redAccent,
+                                      ),
+                                      onPressed: () {
+                                        // Используем setLocalState, чтобы перерисовать только кнопку
+                                        setLocalState(() => isLiked = !isLiked);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  _selectedPlace!.category.toUpperCase(),
+                                  style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 120,
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(12),
+                                        image: const DecorationImage(
+                                          image: NetworkImage('https://via.placeholder.com/150'),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    const Expanded(
+                                      child: Text(
+                                        'Здесь будет детальное описание места. Мы добавили фото-плейсхолдер и полноценную шкалу рейтинга. Теперь карточка выглядит профессионально и её удобно листать!',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 100),
+                              ],
+                            ),
+                            // Градиент для плавного перехода
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: 80,
+                              child: IgnorePointer(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        backgroundColor.withOpacity(0),
+                                        backgroundColor.withOpacity(1),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            
           // СЛОЙ 2: Верхняя панель управления
           Positioned(
             top: 60,
