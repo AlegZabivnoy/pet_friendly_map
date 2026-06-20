@@ -1,30 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool isDarkSaved = prefs.getBool('is_dark') ?? false;
+  final String langSaved = prefs.getString('lang') ?? 'ru';
+
+  runApp(MyApp(initialIsDark: isDarkSaved, initialLang: langSaved));
 }
 
 // === БЛОК 1: ГЛАВНЫЙ ИСТОЧНИК ДАННЫХ (MYAPP) ===
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool initialIsDark;
+  final String initialLang;
+
+  const MyApp({
+    super.key,
+    required this.initialIsDark,
+    required this.initialLang,
+});
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  ThemeMode _themeMode = ThemeMode.light;
-  String _currentLang = 'ru'; // ИСПРАВЛЕНО: Язык теперь живет на самом верху!
+  late ThemeMode _themeMode;
+  late String _currentLang;
 
-  void _toggleTheme() {
+  @override
+  void initState() {
+    super.initState();
+    _themeMode = widget.initialIsDark ? ThemeMode.dark : ThemeMode.light;
+    _currentLang = widget.initialLang;
+  }
+
+  void _toggleTheme() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      if (_themeMode == ThemeMode.light) {
+        _themeMode = ThemeMode.dark;
+        prefs.setBool('is_dark', true);
+      } else {
+        _themeMode = ThemeMode.light;
+        prefs.setBool('is_dark', false);
+      }
     });
   }
 
-  void _toggleLanguage() {
+  void _toggleLanguage() async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       if (_currentLang == 'ru') {
         _currentLang = 'en';
@@ -33,6 +62,7 @@ class _MyAppState extends State<MyApp> {
       } else {
         _currentLang = 'ru';
       }
+      prefs.setString('lang', _currentLang);
     });
   }
 
