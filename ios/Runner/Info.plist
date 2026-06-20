@@ -71,5 +71,7 @@
        <key>NSAllowsArbitraryLoads</key>
        <true/>
     </dict>
+    <key>NSLocationWhenInUseUsageDescription</key>
+        <string>Нам нужен доступ к твоей геопозиции, чтобы показать тебя на карте и найти ближайшие dog-friendly места.</string>
 </dict>
 </plist>
