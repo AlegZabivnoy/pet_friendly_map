@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -125,24 +127,35 @@ class _MainMapScreenState extends State<MainMapScreen> {
       body: Stack(
         children: [
 
-          // СЛОЙ 1: Заглушка под будущую карту
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: isDark ? Colors.grey[900] : Colors.grey[200],
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 64, color: isDark ? Colors.grey[600] : Colors.grey),
-                  const SizedBox(height: 10),
-                  Text(
-                    AppTranslations.data[lang]!['map_placeholder']!,
-                    style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey, fontSize: 18),
+          // СЛОЙ 1: Реальная интерактивная карта OpenStreetMap
+          FlutterMap(
+            options: const MapOptions(
+              // ⬇️ ИСПРАВЛЕНО: Теперь карта при запуске открывает Киев
+              initialCenter: LatLng(50.4501, 30.5234), 
+              initialZoom: 13.0,
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.dog_friendly_map',
+              ),
+              
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    // ⬇️ ИСПРАВЛЕНО: Перенесли лапку кафе тоже в Киев
+                    point: const LatLng(50.4501, 30.5234), 
+                    width: 50,
+                    height: 50,
+                    child: const Icon(
+                      Icons.pets, 
+                      color: Colors.green,
+                      size: 40,
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
 
           // СЛОЙ 2: Верхняя панель управления
