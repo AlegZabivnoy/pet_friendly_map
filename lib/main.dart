@@ -3,6 +3,7 @@ import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dog_friendly_map/data/mock_places.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -118,6 +119,56 @@ class _MainMapScreenState extends State<MainMapScreen> {
   final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
   String _selectedCategory = 'cafe';
 
+  DogFriendlyPlace? _selectedPlace; 
+
+  // 2. ФУНКЦИЯ ДЛЯ ИКОНОК: Выдает нужную картинку по названию категории
+  // НОВАЯ ФУНКЦИЯ ДЛЯ КАСТОМНОГО ПИНА С ЛАПКОЙ
+  Widget _buildCustomPin(String category) {
+    // 1. Выбираем цвет булавки в зависимости от заведения
+    Color pinColor;
+    switch (category) {
+      case 'cafe': pinColor = Colors.brown; break;
+      case 'restaurant': pinColor = Colors.red; break;
+      case 'park': pinColor = Colors.green; break;
+      case 'playground': pinColor = Colors.blue; break;
+      default: pinColor = Colors.grey;
+    }
+
+    // 2. Собираем иконку по твоему скетчу через Stack (слои)
+    return SizedBox(
+      width: 60,
+      height: 60,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          // Нижний слой: Большая цветная капля
+          Icon(Icons.location_on, color: pinColor, size: 60),
+          
+          // Верхний слой: Белый кружок с лапкой внутри
+          Positioned(
+            top: 8, // Сдвигаем кружок ровно в центр "головы" капли
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.pets, // Та самая лапка
+                  color: pinColor, // Красим лапку в цвет капли для стиля
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+
   @override
   Widget build(BuildContext context) {
     final isDark = widget.currentThemeMode == ThemeMode.dark;
@@ -140,20 +191,74 @@ class _MainMapScreenState extends State<MainMapScreen> {
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
               
+              // Слой с маркерами (теперь динамический!)
+              // Слой с маркерами
+              // Слой с маркерами
               MarkerLayer(
-                markers: [
-                  Marker(
-                    // ⬇️ ИСПРАВЛЕНО: Перенесли лапку кафе тоже в Киев
-                    point: const LatLng(50.4501, 30.5234), 
-                    width: 50,
-                    height: 50,
-                    child: const Icon(
-                      Icons.pets, 
-                      color: Colors.green,
-                      size: 40,
-                    ),
-                  ),
-                ],
+                markers: mockPlacesList
+                    .where((place) => place.category == _selectedCategory)
+                    .map((place) => Marker(
+                          point: place.coordinates,
+                          
+                          // 1. ВОЗВРАЩАЕМ СТРОГИЕ РАЗМЕРЫ БУЛАВКИ
+                          width: 60,  
+                          height: 60, 
+                          rotate: true,
+                          
+                          // 2. НАСТРАИВАЕМ ЯКОРЬ (АНКОР)
+                          // Во flutter_map логика якоря часто инвертирована. 
+                          // Попробуй Alignment.topCenter. Если булавка все равно уплывает в другую сторону, 
+                          // поменяй на Alignment.bottomCenter.
+                          // Для идеальной подгонки до миллиметра можно использовать числа: const Alignment(0, -0.8)
+                          alignment: Alignment.topCenter, 
+                          
+                          // 3. Используем Stack с выходом за края
+                          child: Stack(
+                            clipBehavior: Clip.none, // ⬅️ МАГИЯ: разрешаем тексту вылезать за пределы 60х60!
+                            alignment: Alignment.center,
+                            children: [
+                              
+                              // ВСПЛЫВАЮЩИЙ КВАДРАТИК (Сдвигаем его вверх)
+                              if (_selectedPlace == place)
+                                Positioned(
+                                  bottom: 55, // Высота подъема над булавкой
+                                  child: Container(
+                                    width: 140, // Жестко даем ширину, чтоб длинные тексты влезали
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.grey[800] : Colors.white,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: const [
+                                        BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                                      ],
+                                    ),
+                                    child: Text(
+                                      place.name,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 2, 
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              
+                              // САМА БУЛАВКА
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedPlace = _selectedPlace == place ? null : place;
+                                  });
+                                },
+                                child: _buildCustomPin(place.category),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
               ),
             ],
           ),
