@@ -118,7 +118,23 @@ class MainMapScreen extends StatefulWidget {
 class _MainMapScreenState extends State<MainMapScreen> {
   final MapController _mapController = MapController();
 
-  void _goToMyLocation() async {
+  // ТВОЙ БЛОК ПЕРЕМЕННЫХ
+  final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
+  String _selectedCategory = 'cafe';
+  DogFriendlyPlace? _selectedPlace;
+  double _sheetExtent = 0.3;
+  bool _isPlaceLiked = false;
+  LatLng? _currentUserLocation;
+
+  dynamic _positionStreamSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _startLiveLocationTracking();
+  }
+
+  void _startLiveLocationTracking() async {
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -133,22 +149,31 @@ class _MainMapScreenState extends State<MainMapScreen> {
 
     if (permission == LocationPermission.deniedForever) return;
 
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
-    );
-
-    _mapController.move(
-        LatLng(position.latitude, position.longitude),
-        15.0
-    );
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 2,
+      ),
+    ).listen((Position position) {
+      setState(() {
+        _currentUserLocation = LatLng(position.latitude, position.longitude);
+      });
+    });
   }
 
-  final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
-  String _selectedCategory = 'cafe';
+  void _goToMyLocation() {
+    if (_currentUserLocation != null) {
+      _mapController.move(_currentUserLocation!, 15.0);
+    } else {
+      _startLiveLocationTracking();
+    }
+  }
 
-  DogFriendlyPlace? _selectedPlace;
-  double _sheetExtent = 0.3;
-  bool _isPlaceLiked = false;
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    super.dispose();
+  }
 
   Widget _buildCustomPin(String category) {
     Color pinColor;
@@ -198,7 +223,7 @@ class _MainMapScreenState extends State<MainMapScreen> {
 
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    // Высчитываем динамический отступ для единственной кнопки
+    // Высчитываем динамический отступ для кнопки GPS
     final double gpsButtonBottom = _selectedPlace != null
         ? (screenHeight * _sheetExtent) + 16
         : 32.0;
@@ -224,35 +249,68 @@ class _MainMapScreenState extends State<MainMapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: isDark
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' // Угольный минимализм для ночи
+                    : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', // Сочный контрастный минимализм Voyager
+                subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
+
               MarkerLayer(
-                markers: mockPlacesList
-                    .where((place) => place.category == _selectedCategory)
-                    .map((place) => Marker(
-                  point: place.coordinates,
-                  width: 60,
-                  height: 60,
-                  rotate: true,
-                  alignment: Alignment.bottomCenter,
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedPlace = place;
-                        _isPlaceLiked = false;
-                        _sheetExtent = 0.3;
-                      });
-                    },
-                    child: _buildCustomPin(place.category),
-                  ),
-                ))
-                    .toList(),
+                markers: [
+                  // 1. СИНЯЯ ТОЧКА ЮЗЕРА
+                  if (_currentUserLocation != null)
+                    Marker(
+                      point: _currentUserLocation!,
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // 2. МАРКЕРЫ ЗАВЕДЕНИЙ С ЛАПКАМИ
+                  ...mockPlacesList
+                      .where((place) => place.category == _selectedCategory)
+                      .map((place) => Marker(
+                    point: place.coordinates,
+                    width: 60,
+                    height: 60,
+                    rotate: true,
+                    alignment: Alignment.bottomCenter,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedPlace = place;
+                          _isPlaceLiked = false;
+                          _sheetExtent = 0.3;
+                        });
+                      },
+                      child: _buildCustomPin(place.category),
+                    ),
+                  ))
+                      .toList(),
+                ],
               ),
             ],
           ),
 
-          // СЛОЙ 2: ЕДИНСТВЕННАЯ УМНАЯ КНОПКА GPS (Лежит поверх карты)
+          // СЛОЙ 2: УМНАЯ ДИНАМИЧЕСКАЯ КНОПКА GPS
           Positioned(
             bottom: gpsButtonBottom,
             right: 16,
@@ -420,7 +478,7 @@ class _MainMapScreenState extends State<MainMapScreen> {
               ),
             ),
 
-          // СЛОЙ 5: Панель поиска и фильтры (Самый верхний слой)
+          // СЛОЙ 5: Панель поиска и фильтры
           Positioned(
             top: 60,
             left: 16,
