@@ -77,7 +77,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Dog-Friendly Map',
+      title: 'Pet-Friendly Map',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
@@ -119,7 +119,6 @@ class MainMapScreen extends StatefulWidget {
   State<MainMapScreen> createState() => _MainMapScreenState();
 }
 
-// плавные анимации внутри класса
 class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateMixin {
   final MapController _mapController = MapController();
 
@@ -129,9 +128,10 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   DogFriendlyPlace? _selectedPlace;
   double _sheetExtent = 0.3;
   bool _isPlaceLiked = false;
+  String _searchQuery = '';
 
   LatLng? _currentUserLocation;
-  double? _compassHeading; // Хранилище для угла поворота телефона
+  double? _compassHeading;
 
   StreamSubscription<Position>? _positionStreamSubscription;
   StreamSubscription<CompassEvent>? _compassStreamSubscription;
@@ -143,7 +143,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     _startCompassTracking();
   }
 
-  // Бесконечный стрим GPS координат
   void _startLiveLocationTracking() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -172,37 +171,31 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     });
   }
 
-  // Бесконечный стрим компаса телефона
   void _startCompassTracking() {
     _compassStreamSubscription = FlutterCompass.events?.listen((CompassEvent event) {
       if (!mounted) return;
       setState(() {
-        _compassHeading = event.heading; // Получаем угол в градусах (0 - север, 180 - юг)
+        _compassHeading = event.heading;
       });
     });
   }
 
-  // МАГИЯ АНИМАЦИИ: Плавный перелет в любую точку карты вместо резкого прыжка
   void _animatedMapMove(LatLng destLocation, double destZoom) {
-    // Вычисляем стартовые позиции камеры прямо сейчас
     final double startLat = _mapController.camera.center.latitude;
     final double startLng = _mapController.camera.center.longitude;
     final double startZoom = _mapController.camera.zoom;
 
-    // Создаем локальный контроллер анимации на 1 секунду
     final AnimationController animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
 
-    // Задаем красивую кривую скорости (быстрый старт, мягкое замедление в конце)
     final Animation<double> curveAnimation = CurvedAnimation(
       parent: animationController,
       curve: Curves.fastOutSlowIn,
     );
 
     animationController.addListener(() {
-      // Математически интерполируем координаты на каждом кадре анимации
       final double currentLat = startLat + (destLocation.latitude - startLat) * curveAnimation.value;
       final double currentLng = startLng + (destLocation.longitude - startLng) * curveAnimation.value;
       final double currentZoom = startZoom + (destZoom - startZoom) * curveAnimation.value;
@@ -210,13 +203,12 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
       _mapController.move(LatLng(currentLat, currentLng), currentZoom);
     });
 
-    // Запускаем анимацию вперед, а после завершения — чисто удаляем контроллер из памяти
     animationController.forward().then((_) => animationController.dispose());
   }
 
   void _goToMyLocation() {
     if (_currentUserLocation != null) {
-      _animatedMapMove(_currentUserLocation!, 16.0); // Летим плавно на уровень зума 16
+      _animatedMapMove(_currentUserLocation!, 16.0);
     } else {
       _startLiveLocationTracking();
     }
@@ -225,7 +217,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
-    _compassStreamSubscription?.cancel(); // Чистим компас
+    _compassStreamSubscription?.cancel();
     super.dispose();
   }
 
@@ -314,26 +306,24 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                   if (_currentUserLocation != null)
                     Marker(
                       point: _currentUserLocation!,
-                      width: 100, // Увеличили размер контейнера под длину луча
+                      width: 100,
                       height: 100,
                       alignment: Alignment.center,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Слой луча: крутится под воздействием компаса телефона
                           if (_compassHeading != null)
                             Transform.rotate(
-                              angle: (_compassHeading! * (math.pi / 180)), // Переводим градусы в радианы
+                              angle: (_compassHeading! * (math.pi / 180)),
                               child: SizedBox(
                                 width: 100,
                                 height: 100,
                                 child: CustomPaint(
-                                  painter: CompassConePainter(), // Наш кастомный неоновый конус
+                                  painter: CompassConePainter(),
                                 ),
                               ),
                             ),
 
-                          // Центральное синее ядро точки юзера
                           Container(
                             width: 18,
                             height: 18,
@@ -352,7 +342,11 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
                   // 2. МАРКЕРЫ ЗАВЕДЕНИЙ С ЛАПКАМИ
                   ...mockPlacesList
-                      .where((place) => place.category == _selectedCategory)
+                      .where((place) {
+                    final matchesCategory = place.category == _selectedCategory;
+                    final matchesSearch = place.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                    return matchesCategory && matchesSearch;
+                  })
                       .map((place) => Marker(
                     point: place.coordinates,
                     width: 60,
@@ -366,7 +360,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                           _isPlaceLiked = false;
                           _sheetExtent = 0.3;
                         });
-                        // АПГРЕЙД: При тапе на лапку карта сама плавно летит центрироваться на неё!
                         _animatedMapMove(place.coordinates, 15.5);
                       },
                       child: _buildCustomPin(place.category),
@@ -546,7 +539,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
               ),
             ),
 
-          // СЛОЙ 5: Самый верхний слой — Панель поиска и фильтры
+          // СЛОЙ 5: Панель поиска и фильтры
           Positioned(
             top: 60,
             left: 16,
@@ -558,6 +551,11 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                   color: isDark ? Colors.grey[850] : Colors.white,
                   child: TextField(
                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
                     decoration: InputDecoration(
                       hintText: AppTranslations.data[lang]!['search_hint']!,
                       hintStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey),
@@ -624,7 +622,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 class CompassConePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // Делаем мягкий полупрозрачный градиент от насыщенного синего у центра к невидимому на конце
     final paint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.bottomCenter,
@@ -636,10 +633,10 @@ class CompassConePainter extends CustomPainter {
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final path = ui.Path()
-      ..moveTo(size.width / 2, size.height / 2) // Стартуем строго из центра синей точки
-      ..lineTo(size.width / 2 - 25, 0)         // Левый край луча взгляда сверху
-      ..lineTo(size.width / 2 + 25, 0)         // Правый край луча взгляда сверху
-      ..close();                                // Замыкаем треугольный конус
+      ..moveTo(size.width / 2, size.height / 2)
+      ..lineTo(size.width / 2 - 25, 0)
+      ..lineTo(size.width / 2 + 25, 0)
+      ..close();
 
     canvas.drawPath(path, paint);
   }
