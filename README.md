@@ -1,4 +1,4 @@
-# dog_friendly_map
+# pet_friendly_map
 
 A new Flutter project.
 
