@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_compass/flutter_compass.dart';
-import 'dart:math' as math;
 import 'dart:async';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
-import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
 import 'package:dog_friendly_map/models/place_model.dart';
 
@@ -40,16 +37,12 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   String _searchQuery = '';
 
   LatLng? _currentUserLocation;
-  double? _compassHeading;
-
   StreamSubscription<Position>? _positionStreamSubscription;
-  StreamSubscription<CompassEvent>? _compassStreamSubscription;
 
   @override
   void initState() {
     super.initState();
     _startLiveLocationTracking();
-    _startCompassTracking();
   }
 
   void _startLiveLocationTracking() async {
@@ -76,15 +69,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
       if (!mounted) return;
       setState(() {
         _currentUserLocation = LatLng(position.latitude, position.longitude);
-      });
-    });
-  }
-
-  void _startCompassTracking() {
-    _compassStreamSubscription = FlutterCompass.events?.listen((CompassEvent event) {
-      if (!mounted) return;
-      setState(() {
-        _compassHeading = event.heading;
       });
     });
   }
@@ -126,7 +110,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
-    _compassStreamSubscription?.cancel();
     super.dispose();
   }
 
@@ -207,39 +190,24 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
               ),
               MarkerLayer(
                 markers: [
+                  // Аккуратная нативная синяя точка геолокации юзера
                   if (_currentUserLocation != null)
                     Marker(
                       point: _currentUserLocation!,
-                      width: 100,
-                      height: 100,
+                      width: 40,
+                      height: 40,
                       alignment: Alignment.center,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          if (_compassHeading != null)
-                            Transform.rotate(
-                              angle: (_compassHeading! * (math.pi / 180)),
-                              child: SizedBox(
-                                width: 100,
-                                height: 100,
-                                child: CustomPaint(
-                                  painter: CompassConePainter(),
-                                ),
-                              ),
-                            ),
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-                              ],
-                            ),
-                          ),
-                        ],
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                          ],
+                        ),
                       ),
                     ),
                   ...mockPlacesList
