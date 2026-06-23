@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:math' as math;
 import 'dart:async';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
 import 'package:dog_friendly_map/models/place_model.dart';
+import 'package:dog_friendly_map/widgets/compass_cone_painter.dart'; // <-- Подключили отрисовщик луча
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -37,6 +39,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   String _searchQuery = '';
 
   LatLng? _currentUserLocation;
+  double? _gpsHeading; // <-- Переменная для хранения направления движения
   StreamSubscription<Position>? _positionStreamSubscription;
 
   @override
@@ -62,13 +65,18 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
+        accuracy: LocationAccuracy.bestForNavigation, // Максимальная точность для отслеживания курса
         distanceFilter: 0,
       ),
     ).listen((Position position) {
       if (!mounted) return;
       setState(() {
         _currentUserLocation = LatLng(position.latitude, position.longitude);
+
+        // Если GPS передаёт корректный азимут движения, обновляем направление луча
+        if (position.heading >= 0 && position.heading <= 360) {
+          _gpsHeading = position.heading;
+        }
       });
     });
   }
@@ -190,24 +198,40 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
               ),
               MarkerLayer(
                 markers: [
-                  // Аккуратная нативная синяя точка геолокации юзера
+                  // Возвращённый маркер синей точки с красивым лучом направления
                   if (_currentUserLocation != null)
                     Marker(
                       point: _currentUserLocation!,
-                      width: 40,
-                      height: 40,
+                      width: 100,
+                      height: 100,
                       alignment: Alignment.center,
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
-                          ],
-                        ),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          if (_gpsHeading != null)
+                            Transform.rotate(
+                              angle: (_gpsHeading! * (math.pi / 180)),
+                              child: SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: CustomPaint(
+                                  painter: CompassConePainter(),
+                                ),
+                              ),
+                            ),
+                          Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ...mockPlacesList
