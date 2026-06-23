@@ -1,35 +1,41 @@
-// Импортируем LatLng, так как мы используем координаты
 import 'package:latlong2/latlong.dart';
+import 'package:dog_friendly_map/models/place_model.dart'; // <-- Импортируем новую модель
 
-// Наша модель данных
-class DogFriendlyPlace {
-  final String name;
-  final String category;
-  final LatLng coordinates;
-
-  DogFriendlyPlace({
-    required this.name,
-    required this.category,
-    required this.coordinates,
-  });
-}
-
-// Глобальная переменная со списком-заглушкой (чтобы брать её откуда угодно)
-final List<DogFriendlyPlace> mockPlacesList = [
-  DogFriendlyPlace(
-    name: 'Хлібний (Крещатик)',
+const List<PetFriendlyPlace> mockPlacesList = [
+  PetFriendlyPlace(
+    id: 'cafe_1',
+    name: 'Кафе "Пёс и Кофе"',
+    description: 'Уютное место, где вашей собаке всегда рады. Есть миски с водой и бесплатные вкусняшки.',
     category: 'cafe',
-    coordinates: const LatLng(50.4495, 30.5225),
+    coordinates: LatLng(50.4501, 30.5234),
+    rating: 4.8,
+    imageUrl: 'https://via.placeholder.com/150',
   ),
-  DogFriendlyPlace(
-    name: 'Blur Coffee',
-    category: 'cafe',
-    coordinates: const LatLng(50.4354, 30.5298),
-  ),
-  DogFriendlyPlace(
-    name: 'Любчик (Воздвиженка)',
+  PetFriendlyPlace(
+    id: 'rest_1',
+    name: 'Ресторан "Хвост"',
+    description: 'Просторный зал,Chef-меню для питомцев. Разрешено нахождение с крупными собаками.',
     category: 'restaurant',
-    coordinates: const LatLng(50.4612, 30.5105),
+    coordinates: LatLng(50.4545, 30.5290),
+    rating: 4.9,
+    imageUrl: 'https://via.placeholder.com/150',
   ),
-  // ... можешь оставить остальные места тут
+  PetFriendlyPlace(
+    id: 'park_1',
+    name: 'Парк "Зелёный Гай"',
+    description: 'Огромная ограждённая зона для выгула без поводков. Есть снаряды для тренировок.',
+    category: 'park',
+    coordinates: LatLng(50.4420, 30.5120),
+    rating: 4.5,
+    imageUrl: 'https://via.placeholder.com/150',
+  ),
+  PetFriendlyPlace(
+    id: 'play_1',
+    name: 'Площадка на Подоле',
+    description: 'Чистая тренировочная зона со свежим покрытием и урнами для уборки.',
+    category: 'playground',
+    coordinates: LatLng(50.4620, 30.5180),
+    rating: 4.2,
+    imageUrl: 'https://via.placeholder.com/150',
+  ),
 ];

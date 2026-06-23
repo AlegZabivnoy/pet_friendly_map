@@ -5,12 +5,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'dart:math' as math;
 import 'dart:async';
-
-// Твои новые относительные импорты разделенного кода:
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
+import 'package:dog_friendly_map/models/place_model.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -35,7 +34,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
   final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
   String _selectedCategory = 'cafe';
-  DogFriendlyPlace? _selectedPlace; // Временно оставляем старый класс до Шага 2
+  PetFriendlyPlace? _selectedPlace;
   double _sheetExtent = 0.3;
   bool _isPlaceLiked = false;
   String _searchQuery = '';

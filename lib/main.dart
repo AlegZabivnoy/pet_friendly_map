@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dog_friendly_map/screens/main_map_screen.dart';
+import 'package:dog_friendly_map/services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final prefs = await SharedPreferences.getInstance();
-  final bool isDarkSaved = prefs.getBool('is_dark') ?? false;
-  final String langSaved = prefs.getString('lang') ?? 'ru';
+  // Инициализируем SharedPreferences один раз при старте приложения
+  final sharedPrefs = await SharedPreferences.getInstance();
+  final settingsService = SettingsService(sharedPrefs);
 
-  runApp(MyApp(initialIsDark: isDarkSaved, initialLang: langSaved));
+  runApp(MyApp(settingsService: settingsService));
 }
 
 class MyApp extends StatefulWidget {
-  final bool initialIsDark;
-  final String initialLang;
+  final SettingsService settingsService;
 
-  const MyApp({
-    super.key,
-    required this.initialIsDark,
-    required this.initialLang,
-  });
+  const MyApp({super.key, required this.settingsService});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -33,25 +29,24 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _themeMode = widget.initialIsDark ? ThemeMode.dark : ThemeMode.light;
-    _currentLang = widget.initialLang;
+    // Загружаем сохранённые настройки напрямую через сервис
+    _themeMode = widget.settingsService.isDarkMode ? ThemeMode.dark : ThemeMode.light;
+    _currentLang = widget.settingsService.currentLang;
   }
 
   void _toggleTheme() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
       if (_themeMode == ThemeMode.light) {
         _themeMode = ThemeMode.dark;
-        prefs.setBool('is_dark', true);
+        widget.settingsService.saveTheme(true); // Сохраняем состояние "тёмная"
       } else {
         _themeMode = ThemeMode.light;
-        prefs.setBool('is_dark', false);
+        widget.settingsService.saveTheme(false); // Сохраняем состояние "светлая"
       }
     });
   }
 
   void _toggleLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
       if (_currentLang == 'ru') {
         _currentLang = 'en';
@@ -60,7 +55,7 @@ class _MyAppState extends State<MyApp> {
       } else {
         _currentLang = 'ru';
       }
-      prefs.setString('lang', _currentLang);
+      widget.settingsService.saveLanguage(_currentLang); // Сохраняем выбранную локаль
     });
   }
 
