@@ -179,6 +179,9 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
             options: MapOptions(
               initialCenter: const LatLng(50.4501, 30.5234),
               initialZoom: 13.0,
+              minZoom: 4.0,
+              maxZoom: 18.0,
+
               onTap: (tapPosition, point) {
                 if (_selectedPlace != null) {
                   setState(() {
