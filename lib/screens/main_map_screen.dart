@@ -121,17 +121,24 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     super.dispose();
   }
 
-  Widget _buildCustomPin(String category) {
-    Color pinColor;
-    switch (category) {
-      case 'cafe': pinColor = Colors.brown; break;
-      case 'restaurant': pinColor = Colors.red; break;
-      case 'park': pinColor = Colors.green; break;
-      case 'playground': pinColor = Colors.blue; break;
-      default: pinColor = Colors.grey;
-    }
+Widget _buildCustomPin(String category) {
+  Color pinColor;
+  switch (category) {
+    case 'cafe': pinColor = Colors.brown; break;
+    case 'restaurant': pinColor = Colors.red; break;
+    case 'park': pinColor = Colors.green; break;
+    case 'playground': pinColor = Colors.blue; break;
+    default: pinColor = Colors.grey;
+  }
 
-    return SizedBox(
+  // Обернули твой оригинальный код в Transform.translate
+  return Transform.translate(
+    // ⬇️ МАГИЯ КАЛИБРОВКИ ЗДЕСЬ ⬇️
+    // Мы сдвигаем весь блок вниз на 6 пикселей, убивая невидимый отступ шрифта.
+    // Если острие всё еще делает микро-круг при вращении карты — просто поменяй 6 на 5, 7 или 8!
+    offset: const Offset(0, 6), 
+    
+    child: SizedBox(
       width: 60,
       height: 60,
       child: Stack(
@@ -158,8 +165,9 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +207,23 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
+
+
+              //  ТУТ НЕМНОГО ДРУГАЯ КАРТА МЕЙБИ ПОТОМ ПОМЕНЯТЬ, А ТАК ВООБЩЕ НУЖНО АПИ ЗАРЕГАТЬ НА КАКОМ--ТО САЙТЕ С КАРТАМИ И ВСТАВИТЬ ДРУГОЙ СТИЛЬ
+
+              // TileLayer(
+              //   urlTemplate: isDark
+              //       // Глубокий черный стиль (Dark Matter) + @2x для четкости (Retina)
+              //       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+              //       // Красивый светлый стиль (Positron) + @2x
+              //       : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+                
+              //   // Для CartoDB обязательно нужны поддомены
+              //   subdomains: const ['a', 'b', 'c', 'd'],
+              //   userAgentPackageName: 'com.example.dog_friendly_map',
+              // ),
+
+          
               MarkerLayer(
                 markers: [
                   // Возвращённый маркер синей точки с красивым лучом направления
@@ -248,7 +273,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                     width: 60,
                     height: 60,
                     rotate: true,
-                    alignment: Alignment.bottomCenter,
+                    alignment: Alignment.topCenter,
                     child: GestureDetector(
                       onTap: () {
                         setState(() {
@@ -340,15 +365,20 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                               ),
                             ),
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _selectedPlace!.name,
-                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                                  ),
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. Название
+                              Expanded(
+                                child: Text(
+                                  _selectedPlace!.name,
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                                 ),
-                                Row(
+                              ),
+                              
+                              // 2. Звездочки (сдвигаем чуть вниз с помощью Padding)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5.0), // ⬅️ МАГИЯ ЗДЕСЬ (подбери от 4 до 7)
+                                child: Row(
                                   children: List.generate(5, (index) {
                                     return Icon(
                                       index < 4 ? Icons.star : Icons.star_border,
@@ -357,19 +387,26 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                                     );
                                   }),
                                 ),
-                                IconButton(
+                              ),
+                              
+                              // 3. Кнопка лайка (убираем её дефолтные отступы через Transform)
+                              Transform.translate(
+                                offset: const Offset(8, -8), // ⬅️ МАГИЯ 2: сдвигаем правее и выше
+                                child: IconButton(
                                   icon: Icon(
                                     _isPlaceLiked ? Icons.favorite : Icons.favorite_border,
                                     color: Colors.redAccent,
                                   ),
                                   onPressed: () {
+                                    // У тебя может быть setLocalState, если ты используешь StatefulBuilder
                                     setState(() {
                                       _isPlaceLiked = !_isPlaceLiked;
                                     });
                                   },
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                             Text(
                               _selectedPlace!.category.toUpperCase(),
                               style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
