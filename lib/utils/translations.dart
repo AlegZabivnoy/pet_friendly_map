@@ -7,6 +7,15 @@ abstract class AppTranslations {
       'restaurant': 'Restaurants',
       'park': 'Parks',
       'playground': 'Playgrounds',
+
+      'my_profile': 'My Profile',
+      'my_pets': 'My Pets 🐾',
+      'add_first_pet': 'Add your first pet',
+      'pet_name_hint': 'Dog\'s name',
+      'new_pet_title': 'New tail 🐾',
+      'save': 'Save',
+      'cancel': 'Cancel',
+      'no_name': 'No name',
     },
     'ua': {
       'search_hint': 'Пошук',
@@ -15,6 +24,15 @@ abstract class AppTranslations {
       'restaurant': 'Ресторани',
       'park': 'Парки',
       'playground': 'Майданчики',
+
+      'my_profile': 'Мій Профіль',
+      'my_pets': 'Мої улюбленці 🐾',
+      'add_first_pet': 'Додайте першого хвостика',
+      'pet_name_hint': 'Ім\'я собаки',
+      'new_pet_title': 'Новий хвостик 🐾',
+      'save': 'Зберегти',
+      'cancel': 'Скасувати',
+      'no_name': 'Без імені',
     },
     'ru': {
       'search_hint': 'Поиск',
@@ -23,6 +41,15 @@ abstract class AppTranslations {
       'restaurant': 'Рестораны',
       'park': 'Парки',
       'playground': 'Площадки',
+
+      'my_profile': 'Мой Профиль',
+      'my_pets': 'Мои питомцы 🐾',
+      'add_first_pet': 'Добавьте первого питомца',
+      'pet_name_hint': 'Имя собаки',
+      'new_pet_title': 'Новый хвостик 🐾',
+      'save': 'Сохранить',
+      'cancel': 'Отмена',
+      'no_name': 'Без имени',
     },
   };
 }

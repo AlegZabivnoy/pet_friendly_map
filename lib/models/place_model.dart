@@ -4,7 +4,7 @@ class PetFriendlyPlace {
   final String id;
   final String name;
   final String description;
-  final String category; // 'cafe', 'restaurant', 'park', 'playground'
+  final String category;
   final LatLng coordinates;
   final double rating;
   final String? imageUrl;
@@ -19,7 +19,6 @@ class PetFriendlyPlace {
     this.imageUrl,
   });
 
-  // ВАЖНО: Метод для парсинга из чистого JSON (который прилетит из базы данных)
   factory PetFriendlyPlace.fromJson(Map<String, dynamic> json) {
     return PetFriendlyPlace(
       id: json['id'] as String,
@@ -28,7 +27,7 @@ class PetFriendlyPlace {
       category: json['category'] as String,
       rating: (json['rating'] as num).toDouble(),
       imageUrl: json['image_url'] as String?,
-      // База данных не знает про класс LatLng из Флаттера, она вернет просто цифры:
+
       coordinates: LatLng(
         json['latitude'] as double,
         json['longitude'] as double,
@@ -36,7 +35,6 @@ class PetFriendlyPlace {
     );
   }
 
-  // Метод на случай, если нам нужно будет отправить данные обратно в базу
   Map<String, dynamic> toJson() {
     return {
       'id': id,

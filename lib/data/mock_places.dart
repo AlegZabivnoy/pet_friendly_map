@@ -1,5 +1,5 @@
 import 'package:latlong2/latlong.dart';
-import 'package:dog_friendly_map/models/place_model.dart'; // <-- Импортируем новую модель
+import 'package:dog_friendly_map/models/place_model.dart';
 
 const List<PetFriendlyPlace> mockPlacesList = [
   PetFriendlyPlace(

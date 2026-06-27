@@ -8,13 +8,14 @@ import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
 import 'package:dog_friendly_map/models/place_model.dart';
-import 'package:dog_friendly_map/widgets/compass_cone_painter.dart'; // <-- Подключили отрисовщик луча
+import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
   final String currentLang;
   final VoidCallback onThemeToggle;
   final VoidCallback onLanguageToggle;
+  final VoidCallback onOpenProfile;
 
   const MainMapScreen({
     super.key,
@@ -22,6 +23,7 @@ class MainMapScreen extends StatefulWidget {
     required this.currentLang,
     required this.onThemeToggle,
     required this.onLanguageToggle,
+    required this.onOpenProfile,
   });
 
   @override
@@ -39,7 +41,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   String _searchQuery = '';
 
   LatLng? _currentUserLocation;
-  double? _gpsHeading; // <-- Переменная для хранения направления движения
+  double? _gpsHeading;
   StreamSubscription<Position>? _positionStreamSubscription;
 
   @override
@@ -65,15 +67,13 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation, // Максимальная точность для отслеживания курса
+        accuracy: LocationAccuracy.bestForNavigation,
         distanceFilter: 0,
       ),
     ).listen((Position position) {
       if (!mounted) return;
       setState(() {
         _currentUserLocation = LatLng(position.latitude, position.longitude);
-
-        // Если GPS передаёт корректный азимут движения, обновляем направление луча
         if (position.heading >= 0 && position.heading <= 360) {
           _gpsHeading = position.heading;
         }
@@ -189,7 +189,6 @@ Widget _buildCustomPin(String category) {
               initialZoom: 13.0,
               minZoom: 4.0,
               maxZoom: 18.0,
-
               onTap: (tapPosition, point) {
                 if (_selectedPlace != null) {
                   setState(() {
@@ -226,7 +225,6 @@ Widget _buildCustomPin(String category) {
           
               MarkerLayer(
                 markers: [
-                  // Возвращённый маркер синей точки с красивым лучом направления
                   if (_currentUserLocation != null)
                     Marker(
                       point: _currentUserLocation!,
@@ -484,7 +482,10 @@ Widget _buildCustomPin(String category) {
                     decoration: InputDecoration(
                       hintText: AppTranslations.data[lang]!['search_hint']!,
                       hintStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey),
-                      prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[400] : Colors.grey),
+                      prefixIcon: IconButton(
+                        icon: Icon(Icons.person, color: isDark ? Colors.green[400] : Colors.green),
+                        onPressed: widget.onOpenProfile,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(Icons.settings, color: isDark ? Colors.grey[400] : Colors.grey),
                         onPressed: () {
