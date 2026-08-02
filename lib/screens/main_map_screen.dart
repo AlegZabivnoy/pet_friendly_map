@@ -9,6 +9,8 @@ import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
 import 'package:dog_friendly_map/models/place_model.dart';
 import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -31,6 +33,62 @@ class MainMapScreen extends StatefulWidget {
 }
 
 class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateMixin {
+
+  // --- Переменные для маршрута ---
+  List<LatLng> _routePoints = []; 
+  String _routeInfo = '';          
+  bool _isLoadingRoute = false;
+
+  // --- Функция загрузки маршрута через пешеходный OSRM ---
+  Future<void> _fetchRoute(LatLng start, LatLng destination) async {
+    setState(() {
+      _isLoadingRoute = true;
+    });
+
+    final url = Uri.parse(
+      'https://routing.openstreetmap.de/routed-foot/route/v1/foot/'
+      '${start.longitude},${start.latitude};'
+      '${destination.longitude},${destination.latitude}'
+      '?overview=full&geometries=geojson',
+    );
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if ((data['routes'] as List).isNotEmpty) {
+          final route = data['routes'][0];
+          final List coordinates = route['geometry']['coordinates'];
+          
+          final points = coordinates
+              .map((c) => LatLng(c[1] as double, c[0] as double))
+              .toList();
+
+          final double distanceKm = route['distance'] / 1000;
+          final int durationMin = (route['duration'] / 60).round();
+
+          setState(() {
+            _routePoints = points;
+            _routeInfo = '${distanceKm.toStringAsFixed(1)} км • $durationMin мин';
+            _isLoadingRoute = false;
+          });
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingRoute = false;
+      });
+    }
+  }
+
+  // --- Функция сброса маршрута ---
+  void _clearRoute() {
+    setState(() {
+      _routePoints = [];
+      _routeInfo = '';
+    });
+  }
+
   final MapController _mapController = MapController();
 
   final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
@@ -207,7 +265,16 @@ Widget _buildCustomPin(String category) {
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
 
-
+              if (_routePoints.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: _routePoints,
+                    strokeWidth: 5.0,
+                    color: Colors.blueAccent,
+                  ),
+                ],
+              ),
               //  ТУТ НЕМНОГО ДРУГАЯ КАРТА МЕЙБИ ПОТОМ ПОМЕНЯТЬ, А ТАК ВООБЩЕ НУЖНО АПИ ЗАРЕГАТЬ НА КАКОМ--ТО САЙТЕ С КАРТАМИ И ВСТАВИТЬ ДРУГОЙ СТИЛЬ
 
               // TileLayer(
@@ -434,6 +501,41 @@ Widget _buildCustomPin(String category) {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 48,
+                              child: ElevatedButton.icon(
+                                onPressed: _isLoadingRoute
+                                    ? null
+                                    : () {
+                                        if (_currentUserLocation != null && _selectedPlace != null) {
+                                          _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates);
+                                        }
+                                      },
+                                icon: _isLoadingRoute
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.directions, color: Colors.white),
+                                label: Text(
+                                  _isLoadingRoute ? 'Загрузка...' : 'Построить маршрут',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blueAccent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 100),
                           ],
                         ),
@@ -461,6 +563,43 @@ Widget _buildCustomPin(String category) {
                     ),
                   );
                 },
+              ),
+            ),
+            if (_routeInfo.isNotEmpty)
+            Positioned(
+              top: 175,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.blueAccent,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.directions_walk, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          _routeInfo,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: _clearRoute,
+                    ),
+                  ],
+                ),
               ),
             ),
           Positioned(
@@ -533,6 +672,46 @@ Widget _buildCustomPin(String category) {
                     },
                   ),
                 ),
+                if (_searchQuery.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[850] : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
+                    ),
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      children: mockPlacesList
+                          .where((p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+                          .map((place) => ListTile(
+                                leading: const Icon(Icons.location_on, color: Colors.redAccent),
+                                title: Text(
+                                  place.name,
+                                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                                ),
+                                subtitle: Text(
+                                  AppTranslations.data[lang]?[place.category] ?? place.category,
+                                  style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                ),
+                                onTap: () {
+                                  FocusScope.of(context).unfocus();
+                                  setState(() {
+                                    _selectedPlace = place;
+                                    _searchQuery = '';
+                                  });
+                                  _animatedMapMove(place.coordinates, 15.5);
+                                  if (_currentUserLocation != null) {
+                                    _fetchRoute(_currentUserLocation!, place.coordinates);
+                                  }
+                                },
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
