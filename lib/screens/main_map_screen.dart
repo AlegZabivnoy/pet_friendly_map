@@ -40,16 +40,32 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   bool _isLoadingRoute = false;
 
   // --- Функция загрузки маршрута через пешеходный OSRM ---
-  Future<void> _fetchRoute(LatLng start, LatLng destination) async {
+  // --- Переменная способа передвижения ('foot', 'car', 'bike') ---
+  String _travelMode = 'foot';
+
+  // --- Функция загрузки маршрута ---
+  Future<void> _fetchRoute(LatLng start, LatLng destination, {String? mode}) async {
+    final selectedMode = mode ?? _travelMode;
+    
     setState(() {
+      _travelMode = selectedMode;
       _isLoadingRoute = true;
     });
 
+    // Серверы под каждый вид транспорта
+    String baseUrl;
+    if (selectedMode == 'car') {
+      baseUrl = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
+    } else if (selectedMode == 'bike') {
+      baseUrl = 'https://routing.openstreetmap.de/routed-bike/route/v1/bike/';
+    } else {
+      baseUrl = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
+    }
+
     final url = Uri.parse(
-      'https://routing.openstreetmap.de/routed-foot/route/v1/foot/'
-      '${start.longitude},${start.latitude};'
+      '$baseUrl${start.longitude},${start.latitude};'
       '${destination.longitude},${destination.latitude}'
-      '?overview=full&geometries=geojson',
+      '?overview=full&geometries=geojson&continue_straight=false&snapping=any',
     );
 
     try {
@@ -64,6 +80,26 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
               .map((c) => LatLng(c[1] as double, c[0] as double))
               .toList();
 
+          if (points.isNotEmpty) {
+            points[0] = start;
+          }
+
+          const distanceCalc = Distance();
+          int shortcutIndex = 0;
+
+          // Ищем точку в первых 15 шагах, которая находится совсем рядом со стартом (< 40 метров)
+          for (int i = 1; i < math.min(15, points.length); i++) {
+            if (distanceCalc.as(LengthUnit.Meter, start, points[i]) < 40) {
+              shortcutIndex = i; // Нашли место, где маршрут вернулся под старт
+            }
+          }
+
+          // Если петля найдена — вырезаем её!
+          if (shortcutIndex > 0) {
+            points.removeRange(0, shortcutIndex);
+          }
+          points.insert(0, start); // Соединяем напрямую со стартовой точкой
+
           final double distanceKm = route['distance'] / 1000;
           final int durationMin = (route['duration'] / 60).round();
 
@@ -71,6 +107,15 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
             _routePoints = points;
             _routeInfo = '${distanceKm.toStringAsFixed(1)} км • $durationMin мин';
             _isLoadingRoute = false;
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_sheetController.isAttached) {
+              _sheetController.animateTo(
+                0.22,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
           });
         }
       }
@@ -87,9 +132,18 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
       _routePoints = [];
       _routeInfo = '';
     });
+
+    if (_sheetController.isAttached) {
+      _sheetController.animateTo(
+        0.3,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   final MapController _mapController = MapController();
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
 
   final List<String> _categories = ['cafe', 'restaurant', 'park', 'playground'];
   String _selectedCategory = 'cafe';
@@ -227,6 +281,26 @@ Widget _buildCustomPin(String category) {
   );
 }
 
+  Widget _buildTransportBtn(IconData icon, String mode) {
+  final isSelected = _travelMode == mode;
+  return GestureDetector(
+    onTap: () {
+      if (_currentUserLocation != null && _selectedPlace != null) {
+        _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates, mode: mode);
+      }
+    },
+    child: Container(
+      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.only(right: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? Colors.white.withOpacity(0.3) : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: Colors.white, size: 20),
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     final isDark = widget.currentThemeMode == ThemeMode.dark;
@@ -265,16 +339,17 @@ Widget _buildCustomPin(String category) {
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
 
-              if (_routePoints.isNotEmpty)
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _routePoints,
-                    strokeWidth: 5.0,
-                    color: Colors.blueAccent,
-                  ),
-                ],
-              ),
+              // ⬇️ ЗЕЛЕНАЯ ПЛАШКА МАРШРУТА С ВЫБОРОМ ТРАНСПОРТА ⬇️
+          if (_routePoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _routePoints,
+                  strokeWidth: 5.0,
+                  color: isDark ? const Color(0xFF66BB6A) : const Color(0xFF4CAF50),
+                ),
+              ],
+            ),
               //  ТУТ НЕМНОГО ДРУГАЯ КАРТА МЕЙБИ ПОТОМ ПОМЕНЯТЬ, А ТАК ВООБЩЕ НУЖНО АПИ ЗАРЕГАТЬ НА КАКОМ--ТО САЙТЕ С КАРТАМИ И ВСТАВИТЬ ДРУГОЙ СТИЛЬ
 
               // TileLayer(
@@ -402,11 +477,15 @@ Widget _buildCustomPin(String category) {
                 return true;
               },
               child: DraggableScrollableSheet(
+                controller: _sheetController,
                 initialChildSize: 0.3,
                 minChildSize: 0.1,
-                maxChildSize: 0.8,
+                // ⬇️ ДИНАМИЧЕСКИЙ МАКСИМУМ: 0.35 ЕСЛИ ЕСТЬ МАРШРУТ, 0.8 ЕСЛИ НЕТ ⬇️
+                maxChildSize: _routeInfo.isNotEmpty ? 0.72 : 0.8,
                 snap: true,
-                snapSizes: const [0.3, 0.8],
+                snapSizes: _routeInfo.isNotEmpty 
+                    ? const [0.1, 0.22, 0.35] 
+                    : const [0.3, 0.8],
                 builder: (context, scrollController) {
                   final backgroundColor = isDark ? Colors.grey[900]! : Colors.white;
 
@@ -501,37 +580,90 @@ Widget _buildCustomPin(String category) {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 20),
+                            
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                ChoiceChip(
+                                  label: Icon(
+                                    Icons.directions_walk,
+                                    size: 22,
+                                    color: _travelMode == 'foot'
+                                        ? Colors.white
+                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                                  ),
+                                  selected: _travelMode == 'foot',
+                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
+                                  showCheckmark: false, // убираем галочку
+                                  onSelected: (_) => setState(() => _travelMode = 'foot'),
+                                ),
+                                ChoiceChip(
+                                  label: Icon(
+                                    Icons.directions_car,
+                                    size: 22,
+                                    color: _travelMode == 'car'
+                                        ? Colors.white
+                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                                  ),
+                                  selected: _travelMode == 'car',
+                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
+                                  showCheckmark: false,
+                                  onSelected: (_) => setState(() => _travelMode = 'car'),
+                                ),
+                                ChoiceChip(
+                                  label: Icon(
+                                    Icons.directions_bike,
+                                    size: 22,
+                                    color: _travelMode == 'bike'
+                                        ? Colors.white
+                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                                  ),
+                                  selected: _travelMode == 'bike',
+                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
+                                  showCheckmark: false,
+                                  onSelected: (_) => setState(() => _travelMode = 'bike'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
-                              height: 48,
+                              height: 52,
                               child: ElevatedButton.icon(
                                 onPressed: _isLoadingRoute
                                     ? null
                                     : () {
                                         if (_currentUserLocation != null && _selectedPlace != null) {
+                                          setState(() {
+                                            _sheetExtent = 0.2;
+                                          });
                                           _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates);
                                         }
                                       },
                                 icon: _isLoadingRoute
                                     ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                                       )
-                                    : const Icon(Icons.directions, color: Colors.white),
+                                    : const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
                                 label: Text(
                                   _isLoadingRoute ? 'Загрузка...' : 'Построить маршрут',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blueAccent,
+                                  // Динамический цвет под тему из палитры:
+                                  backgroundColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
                               ),
@@ -565,15 +697,16 @@ Widget _buildCustomPin(String category) {
                 },
               ),
             ),
+            
             if (_routeInfo.isNotEmpty)
             Positioned(
-              top: 175,
+              top: 190, // Идеальный отступ под категориями
               left: 16,
               right: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.blueAccent,
+                  color: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
                 ),
@@ -582,20 +715,22 @@ Widget _buildCustomPin(String category) {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.directions_walk, color: Colors.white),
-                        const SizedBox(width: 8),
+                        _buildTransportBtn(Icons.directions_walk, 'foot'),
+                        _buildTransportBtn(Icons.directions_car, 'car'),
+                        _buildTransportBtn(Icons.directions_bike, 'bike'),
+                        const SizedBox(width: 6),
                         Text(
                           _routeInfo,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 15,
                           ),
                         ),
                       ],
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
                       onPressed: _clearRoute,
                     ),
                   ],
