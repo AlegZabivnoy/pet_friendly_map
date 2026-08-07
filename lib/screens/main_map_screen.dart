@@ -33,26 +33,19 @@ class MainMapScreen extends StatefulWidget {
 }
 
 class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateMixin {
-
-  // --- Переменные для маршрута ---
-  List<LatLng> _routePoints = []; 
-  String _routeInfo = '';          
+  List<LatLng> _routePoints = [];
+  String _routeInfo = '';
   bool _isLoadingRoute = false;
-
-  // --- Функция загрузки маршрута через пешеходный OSRM ---
-  // --- Переменная способа передвижения ('foot', 'car', 'bike') ---
   String _travelMode = 'foot';
 
-  // --- Функция загрузки маршрута ---
   Future<void> _fetchRoute(LatLng start, LatLng destination, {String? mode}) async {
     final selectedMode = mode ?? _travelMode;
-    
+
     setState(() {
       _travelMode = selectedMode;
       _isLoadingRoute = true;
     });
 
-    // Серверы под каждый вид транспорта
     String baseUrl;
     if (selectedMode == 'car') {
       baseUrl = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
@@ -64,8 +57,8 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
     final url = Uri.parse(
       '$baseUrl${start.longitude},${start.latitude};'
-      '${destination.longitude},${destination.latitude}'
-      '?overview=full&geometries=geojson&continue_straight=false&snapping=any',
+          '${destination.longitude},${destination.latitude}'
+          '?overview=full&geometries=geojson&continue_straight=false&snapping=any',
     );
 
     try {
@@ -75,7 +68,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
         if ((data['routes'] as List).isNotEmpty) {
           final route = data['routes'][0];
           final List coordinates = route['geometry']['coordinates'];
-          
+
           final points = coordinates
               .map((c) => LatLng(c[1] as double, c[0] as double))
               .toList();
@@ -87,18 +80,16 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
           const distanceCalc = Distance();
           int shortcutIndex = 0;
 
-          // Ищем точку в первых 15 шагах, которая находится совсем рядом со стартом (< 40 метров)
           for (int i = 1; i < math.min(15, points.length); i++) {
             if (distanceCalc.as(LengthUnit.Meter, start, points[i]) < 40) {
-              shortcutIndex = i; // Нашли место, где маршрут вернулся под старт
+              shortcutIndex = i;
             }
           }
 
-          // Если петля найдена — вырезаем её!
           if (shortcutIndex > 0) {
             points.removeRange(0, shortcutIndex);
           }
-          points.insert(0, start); // Соединяем напрямую со стартовой точкой
+          points.insert(0, start);
 
           final double distanceKm = route['distance'] / 1000;
           final int durationMin = (route['duration'] / 60).round();
@@ -126,7 +117,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     }
   }
 
-  // --- Функция сброса маршрута ---
   void _clearRoute() {
     setState(() {
       _routePoints = [];
@@ -233,73 +223,68 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     super.dispose();
   }
 
-Widget _buildCustomPin(String category) {
-  Color pinColor;
-  switch (category) {
-    case 'cafe': pinColor = Colors.brown; break;
-    case 'restaurant': pinColor = Colors.red; break;
-    case 'park': pinColor = Colors.green; break;
-    case 'playground': pinColor = Colors.blue; break;
-    default: pinColor = Colors.grey;
-  }
+  Widget _buildCustomPin(String category) {
+    Color pinColor;
+    switch (category) {
+      case 'cafe': pinColor = Colors.brown; break;
+      case 'restaurant': pinColor = Colors.red; break;
+      case 'park': pinColor = Colors.green; break;
+      case 'playground': pinColor = Colors.blue; break;
+      default: pinColor = Colors.grey;
+    }
 
-  // Обернули твой оригинальный код в Transform.translate
-  return Transform.translate(
-    // ⬇️ МАГИЯ КАЛИБРОВКИ ЗДЕСЬ ⬇️
-    // Мы сдвигаем весь блок вниз на 6 пикселей, убивая невидимый отступ шрифта.
-    // Если острие всё еще делает микро-круг при вращении карты — просто поменяй 6 на 5, 7 или 8!
-    offset: const Offset(0, 6), 
-    
-    child: SizedBox(
-      width: 60,
-      height: 60,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Icon(Icons.location_on, color: pinColor, size: 60),
-          Positioned(
-            top: 8,
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.pets,
-                  color: pinColor,
-                  size: 18,
+    return Transform.translate(
+      offset: const Offset(0, 6),
+      child: SizedBox(
+        width: 60,
+        height: 60,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          children: [
+            Icon(Icons.location_on, color: pinColor, size: 60),
+            Positioned(
+              top: 8,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.pets,
+                    color: pinColor,
+                    size: 18,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildTransportBtn(IconData icon, String mode) {
-  final isSelected = _travelMode == mode;
-  return GestureDetector(
-    onTap: () {
-      if (_currentUserLocation != null && _selectedPlace != null) {
-        _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates, mode: mode);
-      }
-    },
-    child: Container(
-      padding: const EdgeInsets.all(6),
-      margin: const EdgeInsets.only(right: 4),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white.withOpacity(0.3) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+    final isSelected = _travelMode == mode;
+    return GestureDetector(
+      onTap: () {
+        if (_currentUserLocation != null && _selectedPlace != null) {
+          _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates, mode: mode);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        margin: const EdgeInsets.only(right: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white.withOpacity(0.3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
-      child: Icon(icon, color: Colors.white, size: 20),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -338,33 +323,16 @@ Widget _buildCustomPin(String category) {
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
-
-              // ⬇️ ЗЕЛЕНАЯ ПЛАШКА МАРШРУТА С ВЫБОРОМ ТРАНСПОРТА ⬇️
-          if (_routePoints.isNotEmpty)
-            PolylineLayer(
-              polylines: [
-                Polyline(
-                  points: _routePoints,
-                  strokeWidth: 5.0,
-                  color: isDark ? const Color(0xFF66BB6A) : const Color(0xFF4CAF50),
+              if (_routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 5.0,
+                      color: isDark ? const Color(0xFF66BB6A) : const Color(0xFF4CAF50),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-              //  ТУТ НЕМНОГО ДРУГАЯ КАРТА МЕЙБИ ПОТОМ ПОМЕНЯТЬ, А ТАК ВООБЩЕ НУЖНО АПИ ЗАРЕГАТЬ НА КАКОМ--ТО САЙТЕ С КАРТАМИ И ВСТАВИТЬ ДРУГОЙ СТИЛЬ
-
-              // TileLayer(
-              //   urlTemplate: isDark
-              //       // Глубокий черный стиль (Dark Matter) + @2x для четкости (Retina)
-              //       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
-              //       // Красивый светлый стиль (Positron) + @2x
-              //       : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-                
-              //   // Для CartoDB обязательно нужны поддомены
-              //   subdomains: const ['a', 'b', 'c', 'd'],
-              //   userAgentPackageName: 'com.example.dog_friendly_map',
-              // ),
-
-          
               MarkerLayer(
                 markers: [
                   if (_currentUserLocation != null)
@@ -480,11 +448,10 @@ Widget _buildCustomPin(String category) {
                 controller: _sheetController,
                 initialChildSize: 0.3,
                 minChildSize: 0.1,
-                // ⬇️ ДИНАМИЧЕСКИЙ МАКСИМУМ: 0.35 ЕСЛИ ЕСТЬ МАРШРУТ, 0.8 ЕСЛИ НЕТ ⬇️
                 maxChildSize: _routeInfo.isNotEmpty ? 0.72 : 0.8,
                 snap: true,
-                snapSizes: _routeInfo.isNotEmpty 
-                    ? const [0.1, 0.22, 0.35] 
+                snapSizes: _routeInfo.isNotEmpty
+                    ? const [0.1, 0.22, 0.35]
                     : const [0.3, 0.8],
                 builder: (context, scrollController) {
                   final backgroundColor = isDark ? Colors.grey[900]! : Colors.white;
@@ -509,48 +476,42 @@ Widget _buildCustomPin(String category) {
                               ),
                             ),
                             Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1. Название
-                              Expanded(
-                                child: Text(
-                                  _selectedPlace!.name,
-                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              
-                              // 2. Звездочки (сдвигаем чуть вниз с помощью Padding)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 5.0), // ⬅️ МАГИЯ ЗДЕСЬ (подбери от 4 до 7)
-                                child: Row(
-                                  children: List.generate(5, (index) {
-                                    return Icon(
-                                      index < 4 ? Icons.star : Icons.star_border,
-                                      size: 20,
-                                      color: Colors.orange,
-                                    );
-                                  }),
-                                ),
-                              ),
-                              
-                              // 3. Кнопка лайка (убираем её дефолтные отступы через Transform)
-                              Transform.translate(
-                                offset: const Offset(8, -8), // ⬅️ МАГИЯ 2: сдвигаем правее и выше
-                                child: IconButton(
-                                  icon: Icon(
-                                    _isPlaceLiked ? Icons.favorite : Icons.favorite_border,
-                                    color: Colors.redAccent,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _selectedPlace!.name,
+                                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                                   ),
-                                  onPressed: () {
-                                    // У тебя может быть setLocalState, если ты используешь StatefulBuilder
-                                    setState(() {
-                                      _isPlaceLiked = !_isPlaceLiked;
-                                    });
-                                  },
                                 ),
-                              ),
-                            ],
-                          ),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5.0),
+                                  child: Row(
+                                    children: List.generate(5, (index) {
+                                      return Icon(
+                                        index < 4 ? Icons.star : Icons.star_border,
+                                        size: 20,
+                                        color: Colors.orange,
+                                      );
+                                    }),
+                                  ),
+                                ),
+                                Transform.translate(
+                                  offset: const Offset(8, -8),
+                                  child: IconButton(
+                                    icon: Icon(
+                                      _isPlaceLiked ? Icons.favorite : Icons.favorite_border,
+                                      color: Colors.redAccent,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _isPlaceLiked = !_isPlaceLiked;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                             Text(
                               _selectedPlace!.category.toUpperCase(),
                               style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
@@ -580,7 +541,6 @@ Widget _buildCustomPin(String category) {
                                 ),
                               ],
                             ),
-                            
                             const SizedBox(height: 30),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -595,7 +555,7 @@ Widget _buildCustomPin(String category) {
                                   ),
                                   selected: _travelMode == 'foot',
                                   selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
-                                  showCheckmark: false, // убираем галочку
+                                  showCheckmark: false,
                                   onSelected: (_) => setState(() => _travelMode = 'foot'),
                                 ),
                                 ChoiceChip(
@@ -634,19 +594,19 @@ Widget _buildCustomPin(String category) {
                                 onPressed: _isLoadingRoute
                                     ? null
                                     : () {
-                                        if (_currentUserLocation != null && _selectedPlace != null) {
-                                          setState(() {
-                                            _sheetExtent = 0.2;
-                                          });
-                                          _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates);
-                                        }
-                                      },
+                                  if (_currentUserLocation != null && _selectedPlace != null) {
+                                    setState(() {
+                                      _sheetExtent = 0.2;
+                                    });
+                                    _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates);
+                                  }
+                                },
                                 icon: _isLoadingRoute
                                     ? const SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                      )
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                )
                                     : const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
                                 label: Text(
                                   _isLoadingRoute ? 'Загрузка...' : 'Построить маршрут',
@@ -658,7 +618,6 @@ Widget _buildCustomPin(String category) {
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  // Динамический цвет под тему из палитры:
                                   backgroundColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
                                   foregroundColor: Colors.white,
                                   elevation: 0,
@@ -697,10 +656,9 @@ Widget _buildCustomPin(String category) {
                 },
               ),
             ),
-            
-            if (_routeInfo.isNotEmpty)
+          if (_routeInfo.isNotEmpty)
             Positioned(
-              top: 190, // Идеальный отступ под категориями
+              top: 190,
               left: 16,
               right: 16,
               child: Container(
@@ -748,6 +706,7 @@ Widget _buildCustomPin(String category) {
                   color: isDark ? Colors.grey[850] : Colors.white,
                   child: TextField(
                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    textInputAction: TextInputAction.search,
                     onChanged: (value) {
                       setState(() {
                         _searchQuery = value;
@@ -822,27 +781,27 @@ Widget _buildCustomPin(String category) {
                       children: mockPlacesList
                           .where((p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
                           .map((place) => ListTile(
-                                leading: const Icon(Icons.location_on, color: Colors.redAccent),
-                                title: Text(
-                                  place.name,
-                                  style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                                ),
-                                subtitle: Text(
-                                  AppTranslations.data[lang]?[place.category] ?? place.category,
-                                  style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                ),
-                                onTap: () {
-                                  FocusScope.of(context).unfocus();
-                                  setState(() {
-                                    _selectedPlace = place;
-                                    _searchQuery = '';
-                                  });
-                                  _animatedMapMove(place.coordinates, 15.5);
-                                  if (_currentUserLocation != null) {
-                                    _fetchRoute(_currentUserLocation!, place.coordinates);
-                                  }
-                                },
-                              ))
+                        leading: const Icon(Icons.location_on, color: Colors.redAccent),
+                        title: Text(
+                          place.name,
+                          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        ),
+                        subtitle: Text(
+                          AppTranslations.data[lang]?[place.category] ?? place.category,
+                          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        ),
+                        onTap: () {
+                          FocusScope.of(context).unfocus();
+                          setState(() {
+                            _selectedPlace = place;
+                            _searchQuery = '';
+                          });
+                          _animatedMapMove(place.coordinates, 15.5);
+                          if (_currentUserLocation != null) {
+                            _fetchRoute(_currentUserLocation!, place.coordinates);
+                          }
+                        },
+                      ))
                           .toList(),
                     ),
                   ),

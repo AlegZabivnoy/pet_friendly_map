@@ -83,6 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.setBool('is_registered', false);
     await prefs.remove('user_name');
     await prefs.remove('user_nickname');
+    await prefs.remove('saved_pets');
 
     if (!mounted) return;
 
@@ -118,11 +119,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   GestureDetector(
                     onTap: () async {
-                      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-                      if (image != null) {
-                        setStateDialog(() {
-                          selectedImage = image;
-                        });
+                      try {
+                        final XFile? image = await _picker.pickImage(
+                          source: ImageSource.gallery,
+                          imageQuality: 85,
+                        );
+                        if (image != null) {
+                          setStateDialog(() {
+                            selectedImage = image;
+                          });
+                        }
+                      } catch (e) {
+                        debugPrint('Error picking image: $e');
                       }
                     },
                     child: CircleAvatar(
@@ -137,6 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   TextField(
                     autofocus: true,
+                    textCapitalization: TextCapitalization.sentences,
                     style: const TextStyle(color: Colors.black, fontSize: 16),
                     decoration: InputDecoration(
                       hintText: t['pet_name_hint'],

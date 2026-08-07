@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dog_friendly_map/screens/main_navigation.dart';
 import 'package:dog_friendly_map/services/settings_service.dart';
@@ -89,6 +90,16 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       themeMode: _themeMode,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ru', 'RU'),
+        Locale('uk', 'UA'),
+        Locale('en', 'US'),
+      ],
       home: _isRegistered
           ? MainNavigation(
         currentThemeMode: _themeMode,
