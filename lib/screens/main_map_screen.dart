@@ -533,10 +533,10 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                                   ),
                                 ),
                                 const SizedBox(width: 16),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Здесь будет детальное описание места. Мы добавили фото-плейсхолдер и полноценную шкалу рейтинга. Теперь карточка выглядит профессионально и её удобно листать!',
-                                    style: TextStyle(fontSize: 14),
+                                    _selectedPlace!.description,
+                                    style: const TextStyle(fontSize: 14),
                                   ),
                                 ),
                               ],
