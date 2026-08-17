@@ -97,7 +97,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
           setState(() {
             _routePoints = points;
-            _routeInfo = '${distanceKm.toStringAsFixed(1)} км • $durationMin мин';
+            _routeInfo = '${distanceKm.toStringAsFixed(1)} ${AppTranslations.tr('km', widget.currentLang)} • $durationMin ${AppTranslations.tr('min', widget.currentLang)}';
             _isLoadingRoute = false;
           });
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -527,7 +527,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                               ],
                             ),
                             Text(
-                              _selectedPlace!.category.toUpperCase(),
+                              AppTranslations.tr(_selectedPlace!.category, lang).toUpperCase(),
                               style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 16),
@@ -623,14 +623,16 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                                 )
                                     : const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
                                 label: Text(
-                                  _isLoadingRoute ? 'Загрузка...' : 'Построить маршрут',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
+                                        _isLoadingRoute
+                                            ? AppTranslations.tr('loading', lang)
+                                            : AppTranslations.tr('build_route', lang),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
                                   foregroundColor: Colors.white,
@@ -727,7 +729,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: AppTranslations.data[lang]!['search_hint']!,
+                      hintText: AppTranslations.tr('search_hint', lang),
                       hintStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey),
                       prefixIcon: IconButton(
                         icon: Icon(Icons.person, color: isDark ? Colors.green[400] : Colors.green),
@@ -768,7 +770,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                       return Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: ChoiceChip(
-                          label: Text(AppTranslations.data[lang]![category]!),
+                          label: Text(AppTranslations.tr(category, lang)),
                           selected: isSelected,
                           onSelected: (bool selected) {
                             setState(() {
@@ -801,7 +803,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                           style: TextStyle(color: isDark ? Colors.white : Colors.black),
                         ),
                         subtitle: Text(
-                          AppTranslations.data[lang]?[place.category] ?? place.category,
+                          AppTranslations.tr(place.category, lang),
                           style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
                         ),
                         onTap: () {

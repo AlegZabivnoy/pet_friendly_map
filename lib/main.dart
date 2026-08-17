@@ -62,7 +62,7 @@ class _MyAppState extends State<MyApp> {
       if (_currentLang == 'ru') {
         _currentLang = 'en';
       } else if (_currentLang == 'en') {
-        _currentLang = 'ua';
+        _currentLang = 'uk';
       } else {
         _currentLang = 'ru';
       }
@@ -74,6 +74,15 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _isRegistered = true;
     });
+  }
+
+
+  Locale _getLocale(String lang) {
+    switch (lang) {
+      case 'uk': return const Locale('uk', 'UA');
+      case 'en': return const Locale('en', 'US');
+      default: return const Locale('ru', 'RU');
+    }
   }
 
   @override
@@ -90,6 +99,7 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       themeMode: _themeMode,
+      locale: _getLocale(_currentLang),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

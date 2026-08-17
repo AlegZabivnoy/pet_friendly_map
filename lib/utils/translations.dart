@@ -7,32 +7,28 @@ abstract class AppTranslations {
       'restaurant': 'Restaurants',
       'park': 'Parks',
       'playground': 'Playgrounds',
-
-      'my_profile': 'My Profile',
-      'my_pets': 'My Pets 🐾',
-      'add_first_pet': 'Add your first pet',
-      'pet_name_hint': 'Dog\'s name',
-      'new_pet_title': 'New tail 🐾',
-      'save': 'Save',
-      'cancel': 'Cancel',
-      'no_name': 'No name',
+      'build_route': 'Build route',
+      'loading': 'Loading...',
+      'km': 'km',
+      'min': 'min',
+      'settings': 'Settings',
+      'theme_dark': 'Dark Mode',
+      'language': 'Language',
     },
-    'ua': {
+    'uk': {
       'search_hint': 'Пошук',
       'map_placeholder': 'Тут буде інтерактивна мапа',
       'cafe': 'Кав\'ярні',
       'restaurant': 'Ресторани',
       'park': 'Парки',
       'playground': 'Майданчики',
-
-      'my_profile': 'Мій Профіль',
-      'my_pets': 'Мої улюбленці 🐾',
-      'add_first_pet': 'Додайте першого хвостика',
-      'pet_name_hint': 'Ім\'я собаки',
-      'new_pet_title': 'Новий хвостик 🐾',
-      'save': 'Зберегти',
-      'cancel': 'Скасувати',
-      'no_name': 'Без імені',
+      'build_route': 'Побудувати маршрут',
+      'loading': 'Завантаження...',
+      'km': 'км',
+      'min': 'хв',
+      'settings': 'Налаштування',
+      'theme_dark': 'Темна тема',
+      'language': 'Мова',
     },
     'ru': {
       'search_hint': 'Поиск',
@@ -41,15 +37,19 @@ abstract class AppTranslations {
       'restaurant': 'Рестораны',
       'park': 'Парки',
       'playground': 'Площадки',
-
-      'my_profile': 'Мой Профиль',
-      'my_pets': 'Мои питомцы 🐾',
-      'add_first_pet': 'Добавьте первого питомца',
-      'pet_name_hint': 'Имя собаки',
-      'new_pet_title': 'Новый хвостик 🐾',
-      'save': 'Сохранить',
-      'cancel': 'Отмена',
-      'no_name': 'Без имени',
+      'build_route': 'Построить маршрут',
+      'loading': 'Загрузка...',
+      'km': 'км',
+      'min': 'мин',
+      'settings': 'Настройки',
+      'theme_dark': 'Темная тема',
+      'language': 'Язык',
     },
   };
+
+  // Безопасный метод: перенаправляет 'ua' на 'uk' и никогда не возвращает null
+  static String tr(String key, String lang) {
+    final effectiveLang = (lang == 'ua') ? 'uk' : lang;
+    return data[effectiveLang]?[key] ?? data['en']?[key] ?? key;
+  }
 }

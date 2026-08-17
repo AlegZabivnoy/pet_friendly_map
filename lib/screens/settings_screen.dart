@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dog_friendly_map/utils/translations.dart';
 
 class SettingsScreen extends StatelessWidget {
   final ThemeMode currentThemeMode;
@@ -20,7 +21,7 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(currentLang == 'en' ? 'Settings' : currentLang == 'ua' ? 'Налаштування' : 'Настройки'),
+        title: Text(AppTranslations.tr('settings', currentLang)),
         backgroundColor: isDark ? Colors.grey[850] : Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -29,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
         children: [
           ListTile(
             leading: Icon(isDark ? Icons.light_mode : Icons.dark_mode, color: Colors.green),
-            title: Text(currentLang == 'en' ? 'Dark Mode' : currentLang == 'ua' ? 'Темна тема' : 'Темная тема'),
+            title: Text(AppTranslations.tr('theme_dark', currentLang)),
             trailing: Switch(
               value: isDark,
               onChanged: (bool value) {
@@ -40,7 +41,7 @@ class SettingsScreen extends StatelessWidget {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.language, color: Colors.green),
-            title: Text(currentLang == 'en' ? 'Language' : currentLang == 'ua' ? 'Мова' : 'Язык'),
+            title: Text(AppTranslations.tr('language', currentLang)),
             trailing: ElevatedButton(
               onPressed: onLanguageToggle,
               child: Text(currentLang.toUpperCase()),
