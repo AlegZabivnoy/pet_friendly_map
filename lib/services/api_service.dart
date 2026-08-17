@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,18 +23,30 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      print('STATUS: ${response.statusCode}');
+      print('BODY: ${response.body}');
+
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {}
+
       if (response.statusCode == 201) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', data['token']);
-        await prefs.setString('user_name', data['user']['name']);
-        await prefs.setString('user_nickname', data['user']['nickname']);
+        await prefs.setString('jwt_token', data['token'] ?? '');
+        await prefs.setString('user_name', data['user']?['name'] ?? name);
+        await prefs.setString('user_nickname', data['user']?['nickname'] ?? nickname);
         await prefs.setBool('is_registered', true);
         return {'success': true};
       }
-      return {'success': false, 'error': data['error'] ?? 'Ошибка регистрации'};
+
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Ошибка сервера (${response.statusCode})'
+      };
     } catch (e) {
-      return {'success': false, 'error': 'Сервер недоступен'};
+      print('Flutter error: $e');
+      return {'success': false, 'error': 'Сервер недоступен: $e'};
     }
   }
 
@@ -53,16 +64,24 @@ class ApiService {
         }),
       );
 
-      final data = jsonDecode(response.body);
+      Map<String, dynamic> data = {};
+      try {
+        data = jsonDecode(response.body);
+      } catch (_) {}
+
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', data['token']);
-        await prefs.setString('user_name', data['user']['name']);
-        await prefs.setString('user_nickname', data['user']['nickname']);
+        await prefs.setString('jwt_token', data['token'] ?? '');
+        await prefs.setString('user_name', data['user']?['name'] ?? '');
+        await prefs.setString('user_nickname', data['user']?['nickname'] ?? '');
         await prefs.setBool('is_registered', true);
         return {'success': true};
       }
-      return {'success': false, 'error': data['error'] ?? 'Ошибка входа'};
+
+      return {
+        'success': false,
+        'error': data['error'] ?? 'Ошибка входа (${response.statusCode})'
+      };
     } catch (e) {
       return {'success': false, 'error': 'Сервер недоступен'};
     }
