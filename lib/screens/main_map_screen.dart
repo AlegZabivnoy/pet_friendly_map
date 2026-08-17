@@ -11,6 +11,7 @@ import 'package:dog_friendly_map/models/place_model.dart';
 import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:dog_friendly_map/services/place_service.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -142,6 +143,18 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   bool _isPlaceLiked = false;
   String _searchQuery = '';
 
+  List<PetFriendlyPlace> _places = mockPlacesList;
+
+  Future<void> _loadPlaces() async {
+    final fetched = await PlaceService.fetchPlaces();
+    if (mounted && fetched.isNotEmpty) {
+      setState(() {
+        _places = fetched;
+      });
+    }
+  }
+
+
   LatLng? _currentUserLocation;
   double? _gpsHeading;
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -150,6 +163,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   void initState() {
     super.initState();
     _startLiveLocationTracking();
+    _loadPlaces();
   }
 
   void _startLiveLocationTracking() async {
@@ -370,7 +384,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                         ],
                       ),
                     ),
-                  ...mockPlacesList
+                  ..._places
                       .where((place) {
                     final matchesCategory = place.category == _selectedCategory;
                     final matchesSearch = place.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -778,7 +792,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                     child: ListView(
                       padding: EdgeInsets.zero,
                       shrinkWrap: true,
-                      children: mockPlacesList
+                      children: _places
                           .where((p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
                           .map((place) => ListTile(
                         leading: const Icon(Icons.location_on, color: Colors.redAccent),
