@@ -131,6 +131,11 @@ app.delete('/api/pets/:id', authenticateToken, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Сервер запущен на http://localhost:${PORT}`);
-});
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Сервер запущен на http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
