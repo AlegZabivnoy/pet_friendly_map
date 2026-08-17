@@ -1,25 +1,23 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/main.dart';
 import 'package:dog_friendly_map/services/settings_service.dart';
+import 'package:dog_friendly_map/services/api_service.dart';
 
 class Pet {
-  String name;
-  String? imagePath;
-  Pet({required this.name, this.imagePath});
+  final int? id;
+  final String name;
+  final String? imagePath;
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'imagePath': imagePath,
-  };
+  Pet({this.id, required this.name, this.imagePath});
 
   factory Pet.fromJson(Map<String, dynamic> json) => Pet(
+    id: json['id'],
     name: json['name'],
-    imagePath: json['imagePath'],
+    imagePath: json['image_path'] ?? json['imagePath'],
   );
 }
 
@@ -51,39 +49,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? petsJson = prefs.getString('saved_pets');
-
     setState(() {
       _userName = prefs.getString('user_name') ?? 'Имя не указано';
       _userNickname = prefs.getString('user_nickname') ?? '@nickname';
+    });
 
-      if (petsJson != null) {
-        final List<dynamic> decodedList = jsonDecode(petsJson);
+    final profileData = await ApiService.fetchProfile();
+    if (profileData != null && mounted) {
+      setState(() {
+        _userName = profileData['user']['name'] ?? _userName;
+        _userNickname = profileData['user']['nickname'] ?? _userNickname;
+        final petsList = profileData['pets'] as List<dynamic>;
         _myPets.clear();
-        _myPets.addAll(decodedList.map((e) => Pet.fromJson(e)).toList());
+        _myPets.addAll(petsList.map((e) => Pet.fromJson(e)).toList());
+      });
+    }
+  }
+
+  void _deletePet(int index) async {
+    final pet = _myPets[index];
+    if (pet.id != null) {
+      final success = await ApiService.deletePet(pet.id!);
+      if (success && mounted) {
+        setState(() {
+          _myPets.removeAt(index);
+        });
       }
-    });
-  }
-
-  Future<void> _savePets() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(_myPets.map((p) => p.toJson()).toList());
-    await prefs.setString('saved_pets', encodedData);
-  }
-
-  void _deletePet(int index) {
-    setState(() {
-      _myPets.removeAt(index);
-    });
-    _savePets();
+    } else {
+      setState(() {
+        _myPets.removeAt(index);
+      });
+    }
   }
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_registered', false);
+    await prefs.remove('jwt_token');
     await prefs.remove('user_name');
     await prefs.remove('user_nickname');
     await prefs.remove('saved_pets');
+    await prefs.setBool('is_registered', false);
 
     if (!mounted) return;
 
@@ -181,13 +186,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (petName.isNotEmpty || selectedImage != null) {
-      setState(() {
-        _myPets.add(Pet(
-          name: petName.isEmpty ? t['no_name']! : petName,
-          imagePath: selectedImage?.path,
-        ));
-      });
-      _savePets();
+      final savedName = petName.isEmpty ? t['no_name']! : petName;
+      final createdPetData = await ApiService.addPet(savedName, selectedImage?.path);
+      if (createdPetData != null && mounted) {
+        setState(() {
+          _myPets.insert(0, Pet.fromJson(createdPetData));
+        });
+      }
     }
   }
 
@@ -243,7 +248,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const Divider(height: 40, thickness: 1),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -255,7 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
             SizedBox(
               height: 130,
               child: _myPets.isEmpty
