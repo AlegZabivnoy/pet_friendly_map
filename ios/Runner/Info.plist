@@ -24,6 +24,12 @@
     <string>????</string>
     <key>CFBundleVersion</key>
     <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+       <string>en</string>
+       <string>uk</string>
+       <string>ru</string>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>UIApplicationSceneManifest</key>
@@ -72,6 +78,6 @@
        <true/>
     </dict>
     <key>NSLocationWhenInUseUsageDescription</key>
-        <string>Нам нужен доступ к твоей геопозиции, чтобы показать тебя на карте и найти ближайшие dog-friendly места.</string>
+    <string>Нам нужен доступ к твоей геопозиции, чтобы показать тебя на карте и найти ближайшие dog-friendly места.</string>
 </dict>
 </plist>

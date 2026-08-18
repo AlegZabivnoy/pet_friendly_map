@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:dog_friendly_map/l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dog_friendly_map/screens/main_navigation.dart';
 import 'package:dog_friendly_map/services/settings_service.dart';
@@ -34,7 +35,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late ThemeMode _themeMode;
-  late String _currentLang;
+  late String? _currentLang;
   late bool _isRegistered;
 
   @override
@@ -60,13 +61,13 @@ class _MyAppState extends State<MyApp> {
   void _toggleLanguage() async {
     setState(() {
       if (_currentLang == 'ru') {
-        _currentLang = 'en';
-      } else if (_currentLang == 'en') {
         _currentLang = 'uk';
+      } else if (_currentLang == 'uk') {
+        _currentLang = 'en';
       } else {
         _currentLang = 'ru';
       }
-      widget.settingsService.saveLanguage(_currentLang);
+      widget.settingsService.saveLanguage(_currentLang!);
     });
   }
 
@@ -74,15 +75,6 @@ class _MyAppState extends State<MyApp> {
     setState(() {
       _isRegistered = true;
     });
-  }
-
-
-  Locale _getLocale(String lang) {
-    switch (lang) {
-      case 'uk': return const Locale('uk', 'UA');
-      case 'en': return const Locale('en', 'US');
-      default: return const Locale('ru', 'RU');
-    }
   }
 
   @override
@@ -99,21 +91,18 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       themeMode: _themeMode,
-      locale: _getLocale(_currentLang),
-      localizationsDelegates: const [
+      locale: _currentLang != null ? Locale(_currentLang!) : null,
+      localizationsDelegates: [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('ru', 'RU'),
-        Locale('uk', 'UA'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       home: _isRegistered
           ? MainNavigation(
         currentThemeMode: _themeMode,
-        currentLang: _currentLang,
+        currentLang: _currentLang ?? 'ru',
         onThemeToggle: _toggleTheme,
         onLanguageToggle: _toggleLanguage,
       )

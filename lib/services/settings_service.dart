@@ -8,18 +8,14 @@ class SettingsService {
 
   SettingsService(this._prefs);
 
-  // Получить сохранённую тему (если настроек нет — по дефолту светлая, то есть false)
   bool get isDarkMode => _prefs.getBool(_keyIsDark) ?? false;
 
-  // Получить сохранённый язык (если настроек нет — по дефолту 'ru')
-  String get currentLang => _prefs.getString(_keyLang) ?? 'ru';
+  String? get currentLang => _prefs.getString(_keyLang);
 
-  // Сохранить настройку темы в память телефона
   Future<void> saveTheme(bool isDark) async {
     await _prefs.setBool(_keyIsDark, isDark);
   }
 
-  // Сохранить настройку языка в память телефона
   Future<void> saveLanguage(String lang) async {
     await _prefs.setString(_keyLang, lang);
   }

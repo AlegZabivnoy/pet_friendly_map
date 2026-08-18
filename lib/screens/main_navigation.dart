@@ -4,7 +4,7 @@ import 'package:dog_friendly_map/screens/profile_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   final ThemeMode currentThemeMode;
-  final String currentLang;
+  final String? currentLang;
   final VoidCallback onThemeToggle;
   final VoidCallback onLanguageToggle;
 
@@ -54,13 +54,12 @@ class _MainNavigationState extends State<MainNavigation> {
         children: [
           MainMapScreen(
             currentThemeMode: widget.currentThemeMode,
-            currentLang: widget.currentLang,
+            currentLang: widget.currentLang ?? 'ru',
             onThemeToggle: widget.onThemeToggle,
             onLanguageToggle: widget.onLanguageToggle,
             onOpenProfile: _goToProfile,
           ),
           ProfileScreen(
-            currentLang: widget.currentLang,
             onBackToMap: _goToMap,
           ),
         ],

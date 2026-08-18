@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dog_friendly_map/utils/translations.dart';
+import 'package:dog_friendly_map/l10n/app_localizations.dart';
 import 'package:dog_friendly_map/main.dart';
 import 'package:dog_friendly_map/services/settings_service.dart';
 import 'package:dog_friendly_map/services/api_service.dart';
@@ -23,12 +23,10 @@ class Pet {
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onBackToMap;
-  final String currentLang;
 
   const ProfileScreen({
     super.key,
     required this.onBackToMap,
-    required this.currentLang,
   });
 
   @override
@@ -50,18 +48,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userName = prefs.getString('user_name') ?? 'Имя не указано';
+      _userName = prefs.getString('user_name') ?? '';
       _userNickname = prefs.getString('user_nickname') ?? '@nickname';
     });
 
     final profileData = await ApiService.fetchProfile();
     if (profileData != null && mounted) {
       setState(() {
-        _userName = profileData['user']['name'] ?? _userName;
-        _userNickname = profileData['user']['nickname'] ?? _userNickname;
-        final petsList = profileData['pets'] as List<dynamic>;
-        _myPets.clear();
-        _myPets.addAll(petsList.map((e) => Pet.fromJson(e)).toList());
+        _userName = profileData['user']?['name'] ?? _userName;
+        _userNickname = profileData['user']?['nickname'] ?? _userNickname;
+        if (profileData['pets'] is List) {
+          final petsList = profileData['pets'] as List<dynamic>;
+          _myPets.clear();
+          _myPets.addAll(petsList.map((e) => Pet.fromJson(e)).toList());
+        }
       });
     }
   }
@@ -105,8 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _addNewPet() async {
-    final t = AppTranslations.data[widget.currentLang]!;
+  Future<void> _addNewPet(AppLocalizations l10n) async {
     String petName = "";
     XFile? selectedImage;
 
@@ -118,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, setStateDialog) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              title: Text(t['new_pet_title']!, textAlign: TextAlign.center),
+              title: Text(l10n.newPetTitle, textAlign: TextAlign.center),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -153,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     textCapitalization: TextCapitalization.sentences,
                     style: const TextStyle(color: Colors.black, fontSize: 16),
                     decoration: InputDecoration(
-                      hintText: t['pet_name_hint'],
+                      hintText: l10n.petNameHint,
                       hintStyle: TextStyle(color: Colors.grey[400]),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       filled: true,
@@ -166,17 +165,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(t['cancel']!, style: const TextStyle(color: Colors.grey)),
+                  child: Text(l10n.cancel, style: const TextStyle(color: Colors.grey)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: Text(t['save']!, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(l10n.save, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -186,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (petName.isNotEmpty || selectedImage != null) {
-      final savedName = petName.isEmpty ? t['no_name']! : petName;
+      final savedName = petName.isEmpty ? l10n.noName : petName;
       final createdPetData = await ApiService.addPet(savedName, selectedImage?.path);
       if (createdPetData != null && mounted) {
         setState(() {
@@ -198,7 +195,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppTranslations.data[widget.currentLang]!;
+    final l10n = AppLocalizations.of(context)!;
+    final displayName = _userName.isNotEmpty ? _userName : l10n.nameNotSpecified;
 
     return Scaffold(
       appBar: AppBar(
@@ -206,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: const Icon(Icons.arrow_back_ios),
           onPressed: widget.onBackToMap,
         ),
-        title: Text(t['my_profile']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l10n.myProfile, style: const TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -233,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_userName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(displayName, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     Text(_userNickname, style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                   ],
                 ),
@@ -251,10 +249,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(t['my_pets']!, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(l10n.myPets, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 IconButton(
                   icon: const Icon(Icons.add_circle, color: Colors.green, size: 32),
-                  onPressed: _addNewPet,
+                  onPressed: () => _addNewPet(l10n),
                 ),
               ],
             ),
@@ -262,7 +260,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               height: 130,
               child: _myPets.isEmpty
-                  ? Center(child: Text(t['add_first_pet']!, style: TextStyle(color: Colors.grey[500], fontSize: 15)))
+                  ? Center(child: Text(l10n.addFirstPet, style: TextStyle(color: Colors.grey[500], fontSize: 15)))
                   : ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: _myPets.length,
@@ -272,36 +270,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.only(right: 20.0),
                     child: Column(
                       children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CircleAvatar(
-                              radius: 42,
-                              backgroundColor: Colors.grey[300],
-                              backgroundImage: pet.imagePath != null ? FileImage(File(pet.imagePath!)) : null,
-                              child: pet.imagePath == null ? const Icon(Icons.pets, color: Colors.white, size: 30) : null,
-                            ),
-                            Positioned(
-                              top: -4,
-                              right: -4,
-                              child: GestureDetector(
-                                onTap: () => _deletePet(index),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 16),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(pet.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      ],
+                      Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                      CircleAvatar(
+                      radius: 42,
+                      backgroundColor: Colors.grey[300],
+                      backgroundImage: pet.imagePath != null ? FileImage(File(pet.imagePath!)) : null,
+                      child: pet.imagePath == null ? const Icon(Icons.pets, color: Colors.white, size: 30) : null,
                     ),
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: GestureDetector(
+                        onTap: () => _deletePet(index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                  ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(pet.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  ],
+                  ),
                   );
                 },
               ),

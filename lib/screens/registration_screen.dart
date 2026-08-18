@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dog_friendly_map/l10n/app_localizations.dart';
 import 'package:dog_friendly_map/services/api_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  Future<void> _submit() async {
+  Future<void> _submit(AppLocalizations l10n) async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
@@ -32,7 +33,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (email.isEmpty || password.isEmpty) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Заполните email и пароль';
+        _errorMessage = l10n.errorEmailPassword;
       });
       return;
     }
@@ -47,7 +48,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (name.isEmpty) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Введите ваше имя';
+          _errorMessage = l10n.errorName;
         });
         return;
       }
@@ -67,7 +68,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       widget.onComplete();
     } else {
       setState(() {
-        _errorMessage = result['error'] ?? 'Произошла ошибка';
+        _errorMessage = result['error'] ?? l10n.errorDefault;
       });
     }
   }
@@ -83,6 +84,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -94,12 +97,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 const Icon(Icons.pets, size: 80, color: Colors.green),
                 const SizedBox(height: 20),
                 Text(
-                  _isLoginMode ? 'С возвращением!' : 'Добро пожаловать!',
+                  _isLoginMode ? l10n.loginTitle : l10n.welcomeTitle,
                   style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _isLoginMode ? 'Войдите в свой профиль' : 'Давайте создадим ваш профиль',
+                  _isLoginMode ? l10n.loginSubtitle : l10n.welcomeSubtitle,
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
                 const SizedBox(height: 32),
@@ -108,7 +111,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
                     decoration: InputDecoration(
-                      hintText: 'Ваше имя',
+                      hintText: l10n.nameHint,
                       prefixIcon: const Icon(Icons.person),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     ),
@@ -117,7 +120,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   TextField(
                     controller: _nicknameController,
                     decoration: InputDecoration(
-                      hintText: 'Никнейм (@doglover)',
+                      hintText: l10n.nicknameHint,
                       prefixIcon: const Icon(Icons.alternate_email),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                     ),
@@ -128,7 +131,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    hintText: 'Email',
+                    hintText: l10n.emailHint,
                     prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
@@ -138,7 +141,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   controller: _passwordController,
                   obscureText: true,
                   decoration: InputDecoration(
-                    hintText: 'Пароль',
+                    hintText: l10n.passwordHint,
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
@@ -161,7 +164,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       backgroundColor: Colors.green,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    onPressed: _isLoading ? null : _submit,
+                    onPressed: _isLoading ? null : () => _submit(l10n),
                     child: _isLoading
                         ? const SizedBox(
                       width: 24,
@@ -169,7 +172,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                     )
                         : Text(
-                      _isLoginMode ? 'Войти' : 'Зарегистрироваться',
+                      _isLoginMode ? l10n.loginBtn : l10n.registerBtn,
                       style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -183,7 +186,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     });
                   },
                   child: Text(
-                    _isLoginMode ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти',
+                    _isLoginMode ? l10n.noAccount : l10n.haveAccount,
                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                 ),
