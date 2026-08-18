@@ -49,7 +49,8 @@ abstract class AppTranslations {
 
   // Безопасный метод: перенаправляет 'ua' на 'uk' и никогда не возвращает null
   static String tr(String key, String lang) {
-    final effectiveLang = (lang == 'ua') ? 'uk' : lang;
-    return data[effectiveLang]?[key] ?? data['en']?[key] ?? key;
-  }
-}
+    // Поддерживаем и 'uk', и 'ua'
+    final l = (lang == 'ua' || lang == 'uk') ? 'uk' : lang;
+    final dict = data[l] ?? data['ru'] ?? data['en'] ?? {};
+    return dict[key] ?? data['en']?[key] ?? key;
+  }}

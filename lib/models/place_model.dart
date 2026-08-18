@@ -21,15 +21,15 @@ class PetFriendlyPlace {
 
   factory PetFriendlyPlace.fromJson(Map<String, dynamic> json) {
     return PetFriendlyPlace(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      category: json['category'] as String? ?? '',
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
-      imageUrl: json['image_url'] as String?,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      category: (json['category']?.toString() ?? '').toLowerCase().trim(),
+      rating: double.tryParse(json['rating']?.toString() ?? '') ?? 5.0,
+      imageUrl: json['image_url']?.toString(),
       coordinates: LatLng(
-        (json['latitude'] as num?)?.toDouble() ?? 0.0,
-        (json['longitude'] as num?)?.toDouble() ?? 0.0,
+        double.tryParse(json['latitude']?.toString() ?? '') ?? 0.0,
+        double.tryParse(json['longitude']?.toString() ?? '') ?? 0.0,
       ),
     );
   }

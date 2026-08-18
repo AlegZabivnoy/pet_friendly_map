@@ -300,6 +300,19 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     );
   }
 
+bool _isCategoryMatch(String placeCat, String selectedCat) {
+    final p = placeCat.toLowerCase().trim();
+    final s = selectedCat.toLowerCase().trim();
+    if (p == s) return true;
+
+    if (s == 'cafe') return p.contains('cafe') || p.contains('кафе') || p.contains('кав');
+    if (s == 'restaurant') return p.contains('rest') || p.contains('рест');
+    if (s == 'park') return p.contains('park') || p.contains('парк') || p.contains('гай') || p.contains('сквер');
+    if (s == 'playground') return p.contains('play') || p.contains('площ') || p.contains('майдан');
+
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = widget.currentThemeMode == ThemeMode.dark;
@@ -386,7 +399,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                     ),
                   ..._places
                       .where((place) {
-                    final matchesCategory = place.category == _selectedCategory;
+                    final matchesCategory = _isCategoryMatch(place.category, _selectedCategory);
                     final matchesSearch = place.name.toLowerCase().contains(_searchQuery.toLowerCase());
                     return matchesCategory && matchesSearch;
                   })
