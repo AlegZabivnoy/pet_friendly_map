@@ -69,6 +69,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get petNameHint => 'Pet name';
 
   @override
+  String get petSize => 'Pet Size';
+
+  @override
+  String get sizeSmall => 'Small (<10 kg)';
+
+  @override
+  String get sizeMedium => 'Medium (10–25 kg)';
+
+  @override
+  String get sizeLarge => 'Large (>25 kg)';
+
+  @override
+  String get sizeSmallShort => 'Small';
+
+  @override
+  String get sizeMediumShort => 'Medium';
+
+  @override
+  String get sizeLargeShort => 'Large';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

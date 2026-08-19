@@ -23,9 +23,6 @@ class ApiService {
         }),
       );
 
-      print('STATUS: ${response.statusCode}');
-      print('BODY: ${response.body}');
-
       Map<String, dynamic> data = {};
       try {
         data = jsonDecode(response.body);
@@ -45,7 +42,6 @@ class ApiService {
         'error': data['error'] ?? 'Ошибка сервера (${response.statusCode})'
       };
     } catch (e) {
-      print('Flutter error: $e');
       return {'success': false, 'error': 'Сервер недоступен: $e'};
     }
   }
@@ -110,7 +106,11 @@ class ApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> addPet(String name, String? imagePath) async {
+  static Future<Map<String, dynamic>?> addPet(
+      String name,
+      String? imagePath, {
+        String size = 'medium',
+      }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
@@ -125,6 +125,7 @@ class ApiService {
         body: jsonEncode({
           'name': name,
           'imagePath': imagePath,
+          'size': size,
         }),
       );
 

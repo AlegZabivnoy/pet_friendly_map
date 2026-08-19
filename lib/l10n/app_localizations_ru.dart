@@ -69,6 +69,27 @@ class AppLocalizationsRu extends AppLocalizations {
   String get petNameHint => 'Кличка питомца';
 
   @override
+  String get petSize => 'Размер питомца';
+
+  @override
+  String get sizeSmall => 'Маленький (<10 кг)';
+
+  @override
+  String get sizeMedium => 'Средний (10–25 кг)';
+
+  @override
+  String get sizeLarge => 'Большой (>25 кг)';
+
+  @override
+  String get sizeSmallShort => 'Маленький';
+
+  @override
+  String get sizeMediumShort => 'Средний';
+
+  @override
+  String get sizeLargeShort => 'Большой';
+
+  @override
   String get cancel => 'Отмена';
 
   @override

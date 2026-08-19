@@ -11,13 +11,20 @@ class Pet {
   final int? id;
   final String name;
   final String? imagePath;
+  final String size;
 
-  Pet({this.id, required this.name, this.imagePath});
+  Pet({
+    this.id,
+    required this.name,
+    this.imagePath,
+    this.size = 'medium',
+  });
 
   factory Pet.fromJson(Map<String, dynamic> json) => Pet(
     id: json['id'],
-    name: json['name'],
+    name: json['name'] ?? '',
     imagePath: json['image_path'] ?? json['imagePath'],
+    size: json['size'] ?? 'medium',
   );
 }
 
@@ -105,8 +112,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  String _getPetSizeLabel(String size, AppLocalizations l10n) {
+    switch (size) {
+      case 'small':
+        return l10n.sizeSmallShort;
+      case 'large':
+        return l10n.sizeLargeShort;
+      default:
+        return l10n.sizeMediumShort;
+    }
+  }
+
   Future<void> _addNewPet(AppLocalizations l10n) async {
     String petName = "";
+    String selectedSize = "medium";
     XFile? selectedImage;
 
     await showDialog(
@@ -118,49 +137,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Text(l10n.newPetTitle, textAlign: TextAlign.center),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GestureDetector(
-                    onTap: () async {
-                      try {
-                        final XFile? image = await _picker.pickImage(
-                          source: ImageSource.gallery,
-                          imageQuality: 85,
-                        );
-                        if (image != null) {
-                          setStateDialog(() {
-                            selectedImage = image;
-                          });
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        try {
+                          final XFile? image = await _picker.pickImage(
+                            source: ImageSource.gallery,
+                            imageQuality: 85,
+                          );
+                          if (image != null) {
+                            setStateDialog(() {
+                              selectedImage = image;
+                            });
+                          }
+                        } catch (e) {
+                          debugPrint('Error picking image: $e');
                         }
-                      } catch (e) {
-                        debugPrint('Error picking image: $e');
-                      }
-                    },
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey[200],
-                      backgroundImage: selectedImage != null ? FileImage(File(selectedImage!.path)) : null,
-                      child: selectedImage == null
-                          ? const Icon(Icons.add_a_photo, size: 40, color: Colors.grey)
-                          : null,
+                      },
+                      child: CircleAvatar(
+                        radius: 46,
+                        backgroundColor: Colors.grey[200],
+                        backgroundImage: selectedImage != null
+                            ? FileImage(File(selectedImage!.path))
+                            : null,
+                        child: selectedImage == null
+                            ? const Icon(Icons.add_a_photo, size: 36, color: Colors.grey)
+                            : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    autofocus: true,
-                    textCapitalization: TextCapitalization.sentences,
-                    style: const TextStyle(color: Colors.black, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: l10n.petNameHint,
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
+                    const SizedBox(height: 16),
+                    TextField(
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: InputDecoration(
+                        hintText: l10n.petNameHint,
+                        hintStyle: TextStyle(color: Colors.grey[400]),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      ),
+                      onChanged: (value) => petName = value.trim(),
                     ),
-                    onChanged: (value) => petName = value.trim(),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        l10n.petSize,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: Text(l10n.sizeSmall, style: const TextStyle(fontSize: 12)),
+                          selected: selectedSize == 'small',
+                          onSelected: (val) {
+                            if (val) setStateDialog(() => selectedSize = 'small');
+                          },
+                        ),
+                        ChoiceChip(
+                          label: Text(l10n.sizeMedium, style: const TextStyle(fontSize: 12)),
+                          selected: selectedSize == 'medium',
+                          onSelected: (val) {
+                            if (val) setStateDialog(() => selectedSize = 'medium');
+                          },
+                        ),
+                        ChoiceChip(
+                          label: Text(l10n.sizeLarge, style: const TextStyle(fontSize: 12)),
+                          selected: selectedSize == 'large',
+                          onSelected: (val) {
+                            if (val) setStateDialog(() => selectedSize = 'large');
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -173,7 +231,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () => Navigator.pop(context),
-                  child: Text(l10n.save, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    l10n.save,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             );
@@ -184,7 +245,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (petName.isNotEmpty || selectedImage != null) {
       final savedName = petName.isEmpty ? l10n.noName : petName;
-      final createdPetData = await ApiService.addPet(savedName, selectedImage?.path);
+      final createdPetData = await ApiService.addPet(
+        savedName,
+        selectedImage?.path,
+        size: selectedSize,
+      );
       if (createdPetData != null && mounted) {
         setState(() {
           _myPets.insert(0, Pet.fromJson(createdPetData));
@@ -258,9 +323,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 130,
+              height: 145,
               child: _myPets.isEmpty
-                  ? Center(child: Text(l10n.addFirstPet, style: TextStyle(color: Colors.grey[500], fontSize: 15)))
+                  ? Center(
+                child: Text(
+                  l10n.addFirstPet,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 15),
+                ),
+              )
                   : ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: _myPets.length,
@@ -270,36 +340,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.only(right: 20.0),
                     child: Column(
                       children: [
-                      Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                      CircleAvatar(
-                      radius: 42,
-                      backgroundColor: Colors.grey[300],
-                      backgroundImage: pet.imagePath != null ? FileImage(File(pet.imagePath!)) : null,
-                      child: pet.imagePath == null ? const Icon(Icons.pets, color: Colors.white, size: 30) : null,
-                    ),
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: GestureDetector(
-                        onTap: () => _deletePet(index),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 38,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage: pet.imagePath != null
+                                  ? FileImage(File(pet.imagePath!))
+                                  : null,
+                              child: pet.imagePath == null
+                                  ? const Icon(Icons.pets, color: Colors.white, size: 28)
+                                  : null,
+                            ),
+                            Positioned(
+                              top: -4,
+                              right: -4,
+                              child: GestureDetector(
+                                onTap: () => _deletePet(index),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 16),
-                      ),
+                        const SizedBox(height: 6),
+                        Text(
+                          pet.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(top: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _getPetSizeLabel(pet.size, l10n),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(pet.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  ],
-                  ),
                   );
                 },
               ),

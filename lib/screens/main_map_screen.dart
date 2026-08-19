@@ -1,17 +1,18 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'dart:math' as math;
-import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
 import 'package:dog_friendly_map/models/place_model.dart';
 import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:dog_friendly_map/services/place_service.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -34,105 +35,6 @@ class MainMapScreen extends StatefulWidget {
 }
 
 class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateMixin {
-  List<LatLng> _routePoints = [];
-  String _routeInfo = '';
-  bool _isLoadingRoute = false;
-  String _travelMode = 'foot';
-
-  Future<void> _fetchRoute(LatLng start, LatLng destination, {String? mode}) async {
-    final selectedMode = mode ?? _travelMode;
-
-    setState(() {
-      _travelMode = selectedMode;
-      _isLoadingRoute = true;
-    });
-
-    String baseUrl;
-    if (selectedMode == 'car') {
-      baseUrl = 'https://routing.openstreetmap.de/routed-car/route/v1/driving/';
-    } else if (selectedMode == 'bike') {
-      baseUrl = 'https://routing.openstreetmap.de/routed-bike/route/v1/bike/';
-    } else {
-      baseUrl = 'https://routing.openstreetmap.de/routed-foot/route/v1/foot/';
-    }
-
-    final url = Uri.parse(
-      '$baseUrl${start.longitude},${start.latitude};'
-          '${destination.longitude},${destination.latitude}'
-          '?overview=full&geometries=geojson&continue_straight=false&snapping=any',
-    );
-
-    try {
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if ((data['routes'] as List).isNotEmpty) {
-          final route = data['routes'][0];
-          final List coordinates = route['geometry']['coordinates'];
-
-          final points = coordinates
-              .map((c) => LatLng(c[1] as double, c[0] as double))
-              .toList();
-
-          if (points.isNotEmpty) {
-            points[0] = start;
-          }
-
-          const distanceCalc = Distance();
-          int shortcutIndex = 0;
-
-          for (int i = 1; i < math.min(15, points.length); i++) {
-            if (distanceCalc.as(LengthUnit.Meter, start, points[i]) < 40) {
-              shortcutIndex = i;
-            }
-          }
-
-          if (shortcutIndex > 0) {
-            points.removeRange(0, shortcutIndex);
-          }
-          points.insert(0, start);
-
-          final double distanceKm = route['distance'] / 1000;
-          final int durationMin = (route['duration'] / 60).round();
-
-          setState(() {
-            _routePoints = points;
-            _routeInfo = '${distanceKm.toStringAsFixed(1)} ${AppTranslations.tr('km', widget.currentLang)} • $durationMin ${AppTranslations.tr('min', widget.currentLang)}';
-            _isLoadingRoute = false;
-          });
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (_sheetController.isAttached) {
-              _sheetController.animateTo(
-                0.22,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
-            }
-          });
-        }
-      }
-    } catch (e) {
-      setState(() {
-        _isLoadingRoute = false;
-      });
-    }
-  }
-
-  void _clearRoute() {
-    setState(() {
-      _routePoints = [];
-      _routeInfo = '';
-    });
-
-    if (_sheetController.isAttached) {
-      _sheetController.animateTo(
-        0.3,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
-  }
-
   final MapController _mapController = MapController();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
 
@@ -145,16 +47,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
 
   List<PetFriendlyPlace> _places = mockPlacesList;
 
-  Future<void> _loadPlaces() async {
-    final fetched = await PlaceService.fetchPlaces();
-    if (mounted && fetched.isNotEmpty) {
-      setState(() {
-        _places = fetched;
-      });
-    }
-  }
-
-
   LatLng? _currentUserLocation;
   double? _gpsHeading;
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -166,14 +58,20 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     _loadPlaces();
   }
 
-  void _startLiveLocationTracking() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  Future<void> _loadPlaces() async {
+    final fetched = await PlaceService.fetchPlaces();
+    if (mounted && fetched.isNotEmpty) {
+      setState(() {
+        _places = fetched;
+      });
+    }
+  }
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+  void _startLiveLocationTracking() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) return;
@@ -231,6 +129,78 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     }
   }
 
+  Future<void> _openNavigation(LatLng destination) async {
+    final lat = destination.latitude;
+    final lng = destination.longitude;
+
+    final Uri appleMapsUrl = Uri.parse('https://maps.apple.com/?daddr=$lat,$lng');
+    final Uri googleMapsUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    final Uri wazeUrl = Uri.parse('https://waze.com/ul?ll=$lat,$lng&navigate=yes');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final bgColor = isDark ? Colors.grey[900]! : Colors.white;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.map_outlined, color: Colors.blueAccent),
+                  title: const Text('Apple Maps', style: TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    if (await canLaunchUrl(appleMapsUrl)) {
+                      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.pin_drop, color: Colors.redAccent),
+                  title: const Text('Google Maps', style: TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    if (await canLaunchUrl(googleMapsUrl)) {
+                      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.navigation_outlined, color: Colors.cyan),
+                  title: const Text('Waze', style: TextStyle(fontWeight: FontWeight.w600)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    if (await canLaunchUrl(wazeUrl)) {
+                      await launchUrl(wazeUrl, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _positionStreamSubscription?.cancel();
@@ -240,11 +210,20 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
   Widget _buildCustomPin(String category) {
     Color pinColor;
     switch (category) {
-      case 'cafe': pinColor = Colors.brown; break;
-      case 'restaurant': pinColor = Colors.red; break;
-      case 'park': pinColor = Colors.green; break;
-      case 'playground': pinColor = Colors.blue; break;
-      default: pinColor = Colors.grey;
+      case 'cafe':
+        pinColor = Colors.brown;
+        break;
+      case 'restaurant':
+        pinColor = Colors.red;
+        break;
+      case 'park':
+        pinColor = Colors.green;
+        break;
+      case 'playground':
+        pinColor = Colors.blue;
+        break;
+      default:
+        pinColor = Colors.grey;
     }
 
     return Transform.translate(
@@ -280,27 +259,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     );
   }
 
-  Widget _buildTransportBtn(IconData icon, String mode) {
-    final isSelected = _travelMode == mode;
-    return GestureDetector(
-      onTap: () {
-        if (_currentUserLocation != null && _selectedPlace != null) {
-          _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates, mode: mode);
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        margin: const EdgeInsets.only(right: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white.withOpacity(0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-
-bool _isCategoryMatch(String placeCat, String selectedCat) {
+  bool _isCategoryMatch(String placeCat, String selectedCat) {
     final p = placeCat.toLowerCase().trim();
     final s = selectedCat.toLowerCase().trim();
     if (p == s) return true;
@@ -350,19 +309,9 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                 subdomains: const ['a', 'b', 'c', 'd'],
                 userAgentPackageName: 'com.example.dog_friendly_map',
               ),
-              if (_routePoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _routePoints,
-                      strokeWidth: 5.0,
-                      color: isDark ? const Color(0xFF66BB6A) : const Color(0xFF4CAF50),
-                    ),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  if (_currentUserLocation != null)
+              if (_currentUserLocation != null)
+                MarkerLayer(
+                  markers: [
                     Marker(
                       point: _currentUserLocation!,
                       width: 100,
@@ -397,7 +346,15 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                         ],
                       ),
                     ),
-                  ..._places
+                  ],
+                ),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 45,
+                  size: const Size(44, 44),
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(50),
+                  markers: _places
                       .where((place) {
                     final matchesCategory = _isCategoryMatch(place.category, _selectedCategory);
                     final matchesSearch = place.name.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -422,7 +379,33 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                     ),
                   ))
                       .toList(),
-                ],
+                  builder: (context, markers) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black38,
+                            blurRadius: 6,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${markers.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -475,11 +458,9 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                 controller: _sheetController,
                 initialChildSize: 0.3,
                 minChildSize: 0.1,
-                maxChildSize: _routeInfo.isNotEmpty ? 0.72 : 0.8,
+                maxChildSize: 0.8,
                 snap: true,
-                snapSizes: _routeInfo.isNotEmpty
-                    ? const [0.1, 0.22, 0.35]
-                    : const [0.3, 0.8],
+                snapSizes: const [0.3, 0.8],
                 builder: (context, scrollController) {
                   final backgroundColor = isDark ? Colors.grey[900]! : Colors.white;
 
@@ -497,9 +478,13 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                           children: [
                             Center(
                               child: Container(
-                                width: 40, height: 5,
+                                width: 40,
+                                height: 5,
                                 margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(10)),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[400],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
                             Row(
@@ -568,84 +553,26 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 30),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                ChoiceChip(
-                                  label: Icon(
-                                    Icons.directions_walk,
-                                    size: 22,
-                                    color: _travelMode == 'foot'
-                                        ? Colors.white
-                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
-                                  ),
-                                  selected: _travelMode == 'foot',
-                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
-                                  showCheckmark: false,
-                                  onSelected: (_) => setState(() => _travelMode = 'foot'),
-                                ),
-                                ChoiceChip(
-                                  label: Icon(
-                                    Icons.directions_car,
-                                    size: 22,
-                                    color: _travelMode == 'car'
-                                        ? Colors.white
-                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
-                                  ),
-                                  selected: _travelMode == 'car',
-                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
-                                  showCheckmark: false,
-                                  onSelected: (_) => setState(() => _travelMode = 'car'),
-                                ),
-                                ChoiceChip(
-                                  label: Icon(
-                                    Icons.directions_bike,
-                                    size: 22,
-                                    color: _travelMode == 'bike'
-                                        ? Colors.white
-                                        : (isDark ? Colors.grey[400] : Colors.grey[700]),
-                                  ),
-                                  selected: _travelMode == 'bike',
-                                  selectedColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
-                                  showCheckmark: false,
-                                  onSelected: (_) => setState(() => _travelMode = 'bike'),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
                             SizedBox(
                               width: double.infinity,
                               height: 52,
                               child: ElevatedButton.icon(
-                                onPressed: _isLoadingRoute
-                                    ? null
-                                    : () {
-                                  if (_currentUserLocation != null && _selectedPlace != null) {
-                                    setState(() {
-                                      _sheetExtent = 0.2;
-                                    });
-                                    _fetchRoute(_currentUserLocation!, _selectedPlace!.coordinates);
+                                onPressed: () {
+                                  if (_selectedPlace != null) {
+                                    _openNavigation(_selectedPlace!.coordinates);
                                   }
                                 },
-                                icon: _isLoadingRoute
-                                    ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                                )
-                                    : const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
+                                icon: const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
                                 label: Text(
-                                        _isLoadingRoute
-                                            ? AppTranslations.tr('loading', lang)
-                                            : AppTranslations.tr('build_route', lang),
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
+                                  AppTranslations.tr('build_route', lang),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
                                   foregroundColor: Colors.white,
@@ -683,45 +610,6 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                     ),
                   );
                 },
-              ),
-            ),
-          if (_routeInfo.isNotEmpty)
-            Positioned(
-              top: 190,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2E7D32) : const Color(0xFF4CAF50),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6)],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        _buildTransportBtn(Icons.directions_walk, 'foot'),
-                        _buildTransportBtn(Icons.directions_car, 'car'),
-                        _buildTransportBtn(Icons.directions_bike, 'bike'),
-                        const SizedBox(width: 6),
-                        Text(
-                          _routeInfo,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                      onPressed: _clearRoute,
-                    ),
-                  ],
-                ),
               ),
             ),
           Positioned(
@@ -826,9 +714,6 @@ bool _isCategoryMatch(String placeCat, String selectedCat) {
                             _searchQuery = '';
                           });
                           _animatedMapMove(place.coordinates, 15.5);
-                          if (_currentUserLocation != null) {
-                            _fetchRoute(_currentUserLocation!, place.coordinates);
-                          }
                         },
                       ))
                           .toList(),

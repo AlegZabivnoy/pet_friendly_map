@@ -69,6 +69,27 @@ class AppLocalizationsUk extends AppLocalizations {
   String get petNameHint => 'Кличка улюбленця';
 
   @override
+  String get petSize => 'Розмір улюбленця';
+
+  @override
+  String get sizeSmall => 'Маленький (<10 кг)';
+
+  @override
+  String get sizeMedium => 'Середній (10–25 кг)';
+
+  @override
+  String get sizeLarge => 'Великий (>25 кг)';
+
+  @override
+  String get sizeSmallShort => 'Маленький';
+
+  @override
+  String get sizeMediumShort => 'Середній';
+
+  @override
+  String get sizeLargeShort => 'Великий';
+
+  @override
   String get cancel => 'Скасувати';
 
   @override

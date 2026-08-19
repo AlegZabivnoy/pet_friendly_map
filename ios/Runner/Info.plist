@@ -79,5 +79,10 @@
     </dict>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Нам нужен доступ к твоей геопозиции, чтобы показать тебя на карте и найти ближайшие dog-friendly места.</string>
+    <key>LSApplicationQueriesSchemes</key>
+        <array>
+            <string>comgooglemaps</string>
+            <string>waze</string>
+        </array>
 </dict>
 </plist>

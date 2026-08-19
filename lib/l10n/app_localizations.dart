@@ -220,6 +220,48 @@ abstract class AppLocalizations {
   /// **'Pet name'**
   String get petNameHint;
 
+  /// No description provided for @petSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Pet Size'**
+  String get petSize;
+
+  /// No description provided for @sizeSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'Small (<10 kg)'**
+  String get sizeSmall;
+
+  /// No description provided for @sizeMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium (10–25 kg)'**
+  String get sizeMedium;
+
+  /// No description provided for @sizeLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Large (>25 kg)'**
+  String get sizeLarge;
+
+  /// No description provided for @sizeSmallShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Small'**
+  String get sizeSmallShort;
+
+  /// No description provided for @sizeMediumShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium'**
+  String get sizeMediumShort;
+
+  /// No description provided for @sizeLargeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Large'**
+  String get sizeLargeShort;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:
