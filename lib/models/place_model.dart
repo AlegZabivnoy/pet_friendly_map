@@ -20,16 +20,29 @@ class PetFriendlyPlace {
   });
 
   factory PetFriendlyPlace.fromJson(Map<String, dynamic> json) {
+    // Безопасный парсинг чисел (меняем запятую на точку, если таблица на RU/UK)
+    double parseCoordinate(dynamic val) {
+      if (val == null) return 0.0;
+      final str = val.toString().replaceAll(',', '.').trim();
+      return double.tryParse(str) ?? 0.0;
+    }
+
+    final rawImage = json['image_url']?.toString().trim();
+
     return PetFriendlyPlace(
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       category: (json['category']?.toString() ?? '').toLowerCase().trim(),
-      rating: double.tryParse(json['rating']?.toString() ?? '') ?? 5.0,
-      imageUrl: json['image_url']?.toString(),
+      rating: double.tryParse(
+            (json['rating']?.toString() ?? '').replaceAll(',', '.'),
+          ) ?? 5.0,
+      imageUrl: (rawImage != null && rawImage.isNotEmpty && !rawImage.contains('placeholder.com'))
+          ? rawImage
+          : null,
       coordinates: LatLng(
-        double.tryParse(json['latitude']?.toString() ?? '') ?? 0.0,
-        double.tryParse(json['longitude']?.toString() ?? '') ?? 0.0,
+        parseCoordinate(json['latitude']),
+        parseCoordinate(json['longitude']),
       ),
     );
   }

@@ -11,6 +11,18 @@ class NavigationHelper {
     final Uri googleMapsUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
     final Uri wazeUrl = Uri.parse('https://waze.com/ul?ll=$lat,$lng&navigate=yes');
 
+    Future<void> launchMapUrl(Uri url) async {
+      try {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Не удалось открыть приложение карт')),
+          );
+        }
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -40,31 +52,25 @@ class NavigationHelper {
                 ListTile(
                   leading: const Icon(Icons.map_outlined, color: Colors.blueAccent),
                   title: const Text('Apple Maps', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
+                  onTap: () {
                     Navigator.pop(ctx);
-                    if (await canLaunchUrl(appleMapsUrl)) {
-                      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
-                    }
+                    launchMapUrl(appleMapsUrl);
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.pin_drop, color: Colors.redAccent),
                   title: const Text('Google Maps', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
+                  onTap: () {
                     Navigator.pop(ctx);
-                    if (await canLaunchUrl(googleMapsUrl)) {
-                      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-                    }
+                    launchMapUrl(googleMapsUrl);
                   },
                 ),
                 ListTile(
                   leading: const Icon(Icons.navigation_outlined, color: Colors.cyan),
                   title: const Text('Waze', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
+                  onTap: () {
                     Navigator.pop(ctx);
-                    if (await canLaunchUrl(wazeUrl)) {
-                      await launchUrl(wazeUrl, mode: LaunchMode.externalApplication);
-                    }
+                    launchMapUrl(wazeUrl);
                   },
                 ),
               ],

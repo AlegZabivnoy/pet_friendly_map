@@ -13,6 +13,7 @@ import 'package:dog_friendly_map/services/place_service.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:dog_friendly_map/services/favorites_service.dart';
 import 'package:dog_friendly_map/utils/navigation_helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -297,6 +298,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                     child: GestureDetector(
                       onTap: () async {
                         final isFav = await FavoritesService.isFavorite(place.id);
+                        print('ССЫЛКА НА КАРТИНКУ: ${place.imageUrl}');
                         setState(() {
                           _selectedPlace = place;
                           _isPlaceLiked = isFav;
@@ -464,16 +466,34 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(12),
-                                    image: const DecorationImage(
-                                      image: NetworkImage('https://via.placeholder.com/150'),
-                                      fit: BoxFit.cover,
-                                    ),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: SizedBox(
+                                    width: 120,
+                                    height: 120,
+                                    child: _selectedPlace!.imageUrl != null && _selectedPlace!.imageUrl!.isNotEmpty
+                                        ? CachedNetworkImage(
+                                            imageUrl: _selectedPlace!.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (context, url) => Container(
+                                              color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                              child: const Center(
+                                                child: SizedBox(
+                                                  width: 24,
+                                                  height: 24,
+                                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                                ),
+                                              ),
+                                            ),
+                                            errorWidget: (context, url, error) => Container(
+                                              color: isDark ? Colors.grey[800] : Colors.grey[300],
+                                              child: Icon(Icons.pets, color: Colors.grey[500], size: 36),
+                                            ),
+                                          )
+                                        : Container(
+                                            color: isDark ? Colors.grey[800] : Colors.grey[300],
+                                            child: Icon(Icons.pets, color: Colors.grey[500], size: 36),
+                                          ),
                                   ),
                                 ),
                                 const SizedBox(width: 16),
