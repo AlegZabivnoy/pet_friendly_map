@@ -30,5 +30,7 @@
   "cancel": "Отмена",
   "save": "Сохранить",
   "noName": "Без клички",
-  "nameNotSpecified": "Имя не указано"
+  "nameNotSpecified": "Имя не указано",
+  "savedPlaces": "Сохраненные места",
+  "noSavedPlaces": "Пока нет сохраненных мест"
 }

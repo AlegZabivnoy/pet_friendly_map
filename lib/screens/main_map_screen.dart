@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:dog_friendly_map/utils/translations.dart';
 import 'package:dog_friendly_map/data/mock_places.dart';
 import 'package:dog_friendly_map/screens/settings_screen.dart';
@@ -13,6 +11,8 @@ import 'package:dog_friendly_map/models/place_model.dart';
 import 'package:dog_friendly_map/widgets/compass_cone_painter.dart';
 import 'package:dog_friendly_map/services/place_service.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:dog_friendly_map/services/favorites_service.dart';
+import 'package:dog_friendly_map/utils/navigation_helper.dart';
 
 class MainMapScreen extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -127,78 +127,6 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
     } else {
       _startLiveLocationTracking();
     }
-  }
-
-  Future<void> _openNavigation(LatLng destination) async {
-    final lat = destination.latitude;
-    final lng = destination.longitude;
-
-    final Uri appleMapsUrl = Uri.parse('https://maps.apple.com/?daddr=$lat,$lng');
-    final Uri googleMapsUrl = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-    final Uri wazeUrl = Uri.parse('https://waze.com/ul?ll=$lat,$lng&navigate=yes');
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final bgColor = isDark ? Colors.grey[900]! : Colors.white;
-
-        return Container(
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.map_outlined, color: Colors.blueAccent),
-                  title: const Text('Apple Maps', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    if (await canLaunchUrl(appleMapsUrl)) {
-                      await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.pin_drop, color: Colors.redAccent),
-                  title: const Text('Google Maps', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    if (await canLaunchUrl(googleMapsUrl)) {
-                      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.navigation_outlined, color: Colors.cyan),
-                  title: const Text('Waze', style: TextStyle(fontWeight: FontWeight.w600)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    if (await canLaunchUrl(wazeUrl)) {
-                      await launchUrl(wazeUrl, mode: LaunchMode.externalApplication);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
@@ -367,10 +295,11 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                     rotate: true,
                     alignment: Alignment.topCenter,
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
+                        final isFav = await FavoritesService.isFavorite(place.id);
                         setState(() {
                           _selectedPlace = place;
-                          _isPlaceLiked = false;
+                          _isPlaceLiked = isFav;
                           _sheetExtent = 0.3;
                         });
                         _animatedMapMove(place.coordinates, 15.5);
@@ -515,10 +444,13 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                                       _isPlaceLiked ? Icons.favorite : Icons.favorite_border,
                                       color: Colors.redAccent,
                                     ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _isPlaceLiked = !_isPlaceLiked;
-                                      });
+                                    onPressed: () async {
+                                      if (_selectedPlace != null) {
+                                        final updated = await FavoritesService.toggleFavorite(_selectedPlace!.id);
+                                        setState(() {
+                                          _isPlaceLiked = updated;
+                                        });
+                                      }
                                     },
                                   ),
                                 ),
@@ -560,7 +492,7 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                               child: ElevatedButton.icon(
                                 onPressed: () {
                                   if (_selectedPlace != null) {
-                                    _openNavigation(_selectedPlace!.coordinates);
+                                    NavigationHelper.openNavigationSheet(context, _selectedPlace!.coordinates);
                                   }
                                 },
                                 icon: const Icon(Icons.near_me_rounded, color: Colors.white, size: 22),
@@ -707,10 +639,12 @@ class _MainMapScreenState extends State<MainMapScreen> with TickerProviderStateM
                           AppTranslations.tr(place.category, lang),
                           style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
                         ),
-                        onTap: () {
+                        onTap: () async {
                           FocusScope.of(context).unfocus();
+                          final isFav = await FavoritesService.isFavorite(place.id);
                           setState(() {
                             _selectedPlace = place;
+                            _isPlaceLiked = isFav;
                             _searchQuery = '';
                           });
                           _animatedMapMove(place.coordinates, 15.5);

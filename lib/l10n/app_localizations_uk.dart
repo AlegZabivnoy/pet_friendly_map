@@ -100,4 +100,10 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get nameNotSpecified => 'Ім\'я не вказано';
+
+  @override
+  String get savedPlaces => 'Збережені місця';
+
+  @override
+  String get noSavedPlaces => 'Поки немає збережених місць';
 }

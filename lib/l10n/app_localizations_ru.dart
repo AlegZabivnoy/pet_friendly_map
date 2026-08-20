@@ -100,4 +100,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get nameNotSpecified => 'Имя не указано';
+
+  @override
+  String get savedPlaces => 'Сохраненные места';
+
+  @override
+  String get noSavedPlaces => 'Пока нет сохраненных мест';
 }

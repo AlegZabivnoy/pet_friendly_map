@@ -6,6 +6,11 @@ import 'package:dog_friendly_map/l10n/app_localizations.dart';
 import 'package:dog_friendly_map/main.dart';
 import 'package:dog_friendly_map/services/settings_service.dart';
 import 'package:dog_friendly_map/services/api_service.dart';
+import 'package:dog_friendly_map/services/place_service.dart';
+import 'package:dog_friendly_map/services/favorites_service.dart';
+import 'package:dog_friendly_map/models/place_model.dart';
+import 'package:dog_friendly_map/utils/translations.dart';
+import 'package:dog_friendly_map/utils/navigation_helper.dart';
 
 class Pet {
   final int? id;
@@ -43,6 +48,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<Pet> _myPets = [];
+  List<PetFriendlyPlace> _savedPlaces = [];
   String _userName = '';
   String _userNickname = '';
 
@@ -71,6 +77,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       });
     }
+
+    final allPlaces = await PlaceService.fetchPlaces();
+    final favIds = await FavoritesService.getFavorites();
+    if (mounted) {
+      setState(() {
+        _savedPlaces = allPlaces.where((p) => favIds.contains(p.id)).toList();
+      });
+    }
   }
 
   void _deletePet(int index) async {
@@ -89,12 +103,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _removeFavorite(String placeId, int index) async {
+    await FavoritesService.toggleFavorite(placeId);
+    setState(() {
+      _savedPlaces.removeAt(index);
+    });
+  }
+
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
     await prefs.remove('user_name');
     await prefs.remove('user_nickname');
     await prefs.remove('saved_pets');
+    await prefs.remove('favorite_places_ids');
     await prefs.setBool('is_registered', false);
 
     if (!mounted) return;
@@ -262,6 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final displayName = _userName.isNotEmpty ? _userName : l10n.nameNotSpecified;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -310,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ActionChip(label: const Text('Telegram'), avatar: const Icon(Icons.send, size: 16), onPressed: () {}),
               ],
             ),
-            const Divider(height: 40, thickness: 1),
+            const Divider(height: 36, thickness: 1),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -321,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
               height: 145,
               child: _myPets.isEmpty
@@ -396,6 +419,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 },
               ),
+            ),
+            const Divider(height: 36, thickness: 1),
+            Text(l10n.savedPlaces, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _savedPlaces.isEmpty
+                ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  l10n.noSavedPlaces,
+                  style: TextStyle(color: Colors.grey[500], fontSize: 15),
+                ),
+              ),
+            )
+                : ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _savedPlaces.length,
+              itemBuilder: (context, index) {
+                final place = _savedPlaces[index];
+                return GestureDetector(
+                  onTap: () => NavigationHelper.openNavigationSheet(context, place.coordinates),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[850] : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 55,
+                          height: 55,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.storefront, color: Colors.grey, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                place.name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.star, color: Colors.orange, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    place.rating.toStringAsFixed(1),
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    AppTranslations.tr(place.category, l10n.localeName),
+                                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.favorite, color: Colors.redAccent),
+                          onPressed: () => _removeFavorite(place.id, index),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

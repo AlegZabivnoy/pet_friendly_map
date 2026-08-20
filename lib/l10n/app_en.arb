@@ -30,5 +30,7 @@
   "cancel": "Cancel",
   "save": "Save",
   "noName": "No name",
-  "nameNotSpecified": "Name not specified"
+  "nameNotSpecified": "Name not specified",
+  "savedPlaces": "Saved Places",
+  "noSavedPlaces": "No saved places yet"
 }

@@ -100,4 +100,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nameNotSpecified => 'Name not specified';
+
+  @override
+  String get savedPlaces => 'Saved Places';
+
+  @override
+  String get noSavedPlaces => 'No saved places yet';
 }

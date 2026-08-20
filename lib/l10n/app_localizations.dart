@@ -285,6 +285,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name not specified'**
   String get nameNotSpecified;
+
+  /// No description provided for @savedPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved Places'**
+  String get savedPlaces;
+
+  /// No description provided for @noSavedPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved places yet'**
+  String get noSavedPlaces;
 }
 
 class _AppLocalizationsDelegate
